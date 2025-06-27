@@ -1,15 +1,14 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "MMovementMode_VerticalWallRun.h"
+#include "MovementModes/MMovementMode_VerticalWallRun.h"
 
 #include "MMath.h"
 #include "MCharacterMovementComponent.h"
-#include "MMovementMode_WallRun.h"
 #include "MMovementTypes.h"
-#include "MString.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
+#include "MovementModes/MMovementMode_WallRun.h"
 
 UMMovementMode_VerticalWallRun::UMMovementMode_VerticalWallRun()
 {

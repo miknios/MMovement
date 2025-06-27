@@ -1,7 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "MMovementMode_WallRun.h"
+#include "MovementModes/MMovementMode_WallRun.h"
 
 #include "MCharacterMovementComponent.h"
 #include "MMath.h"

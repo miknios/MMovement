@@ -7,6 +7,7 @@
 #include "MControlledLaunchManager.h"
 #include "MMath.h"
 #include "MMovementMode_Base.h"
+#include "MMovementMode_OrientToMovementInterface.h"
 #include "MMovementTypes.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
@@ -93,6 +94,20 @@ void UMCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tic
 		DrawDebugDirection(GetMovementInputVectorLast(), FColor::Blue, TEXT("Input"));
 		DrawDebugDirection(Velocity / 100.0f, FColor::White, TEXT("Velocity"));
 	}
+}
+
+FRotator UMCharacterMovementComponent::ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime,
+                                                                       FRotator& DeltaRotation) const
+{
+	// Compute for custom movement mode if it implements ISKMovementMode_OrientToMovementInterface
+	UMMovementMode_Base* CustomMovementModeCurrent = GetActiveCustomMovementModeInstance();
+	if (IsValid(CustomMovementModeCurrent) && CustomMovementModeCurrent->Implements<UMMovementMode_OrientToMovementInterface>())
+	{
+		return IMMovementMode_OrientToMovementInterface::Execute_ComputeOrientToMovementRotation(
+			CustomMovementModeCurrent, CurrentRotation, DeltaTime, DeltaRotation);
+	}
+
+	return ComputeCharacterOrientation(CurrentRotation, DeltaTime, DeltaRotation);
 }
 
 void UMCharacterMovementComponent::AddControlledLaunchFromParams(const FVector& LaunchVelocity,
@@ -460,4 +475,11 @@ UMMovementMode_Base* UMCharacterMovementComponent::GetCustomMovementModeInstance
 	}
 
 	return CustomMovementModeInstances[EnumValue];
+}
+
+FRotator UMCharacterMovementComponent::ComputeCharacterOrientation(const FRotator& CurrentRotation,
+                                                                   const float DeltaTime,
+                                                                   FRotator& DeltaRotation) const
+{
+	return Super::ComputeOrientToMovementRotation(CurrentRotation, DeltaTime, DeltaRotation);
 }

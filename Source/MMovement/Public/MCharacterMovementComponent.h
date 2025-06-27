@@ -38,7 +38,7 @@ struct FMCharacterMovementComponent_DefaultValues
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FMOnJumpedSignature);
 
 /**
- * 
+ * Base class for CMC that can use custom movement modes and some other features
  */
 UCLASS()
 class MMOVEMENT_API UMCharacterMovementComponent : public UCharacterMovementComponent,
@@ -56,6 +56,7 @@ public:
 	// ~ UActorComponent
 
 	// ~ UCharacterMovementComponent
+	virtual FRotator ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime, FRotator& DeltaRotation) const override;
 	virtual void HandleImpact(const FHitResult& Hit, float TimeSlice, const FVector& MoveDelta) override;
 	virtual float SlideAlongSurface(const FVector& Delta, float Time, const FVector& Normal, FHitResult& Hit, bool bHandleImpact) override;
 	virtual bool CanAttemptJump() const override;
@@ -147,6 +148,12 @@ protected:
 
 	void UpdateTemporalHorizontalVelocityEntry();
 	UMMovementMode_Base* GetCustomMovementModeInstanceForEnum(uint8 EnumValue) const;
+
+	/**
+	 * Override for custom character orientation logic (rotate to aim in top-down, rotate to velocity instead of acceleration etc.)
+	 * This is skipped if the current movement mode implements IMMovementMode_OrientToMovementInterface
+	 */
+	virtual FRotator ComputeCharacterOrientation(const FRotator& CurrentRotation, float DeltaTime, FRotator& DeltaRotation) const;
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "Movement|Movement Modes")

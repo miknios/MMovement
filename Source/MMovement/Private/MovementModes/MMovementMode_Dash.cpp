@@ -1,18 +1,18 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "MMovementMode_Dash.h"
+#include "MovementModes/MMovementMode_Dash.h"
 
 #include "EnhancedInputComponent.h"
 #include "MMath.h"
 #include "MCharacterMovementComponent.h"
 #include "MControlledLaunchManager.h"
-#include "MMovementMode_VerticalWallRun.h"
-#include "MMovementMode_WallRun.h"
 #include "MMovementTypes.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
+#include "MovementModes/MMovementMode_VerticalWallRun.h"
+#include "MovementModes/MMovementMode_WallRun.h"
 
 void UMMovementMode_Dash::Initialize_Implementation()
 {
