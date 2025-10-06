@@ -51,7 +51,7 @@ void UMCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	// Manage controlled launch and apply multipliers
 	ControlledLaunchManager->TickLaunches(DeltaTime);
 
-	FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(Acceleration);
+	const FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(Acceleration);
 
 	BrakingDecelerationFalling = DefaultValues.BrakingDecelerationFalling * ControlledLaunchResult.BrakingDecelerationMultiplier;
 	BrakingDecelerationWalking = DefaultValues.BrakingDecelerationWalking * ControlledLaunchResult.BrakingDecelerationMultiplier;
@@ -62,7 +62,7 @@ void UMCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	UpdateTemporalHorizontalVelocityEntry();
 
 	// Tick Movement Modes
-	for (auto CustomMovementModeInstance : CustomMovementModeInstances)
+	for (UMMovementMode_Base* CustomMovementModeInstance : CustomMovementModeInstances)
 	{
 		CustomMovementModeInstance->Tick(DeltaTime);
 	}

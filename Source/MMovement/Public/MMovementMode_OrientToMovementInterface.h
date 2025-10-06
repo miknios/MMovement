@@ -12,9 +12,6 @@ class UMMovementMode_OrientToMovementInterface : public UInterface
 	GENERATED_BODY()
 };
 
-/**
- * 
- */
 class MMOVEMENT_API IMMovementMode_OrientToMovementInterface
 {
 	GENERATED_BODY()
