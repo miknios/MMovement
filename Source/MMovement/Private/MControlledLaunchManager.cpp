@@ -78,7 +78,10 @@ void UMControlledLaunchManager::TickLaunches(float DeltaTime)
 	for (auto& Element : LaunchInstanceForOwner)
 	{
 		if (ShouldRemoveLaunchInstance(Element.Value))
+		{
 			OwnersToRemove.Emplace(Element.Key);
+			continue;
+		}
 
 		TickLaunchInstance(Element.Value, DeltaTime);
 	}
@@ -91,7 +94,10 @@ void UMControlledLaunchManager::TickLaunches(float DeltaTime)
 	for (int i = LaunchInstancesWithoutOwner.Num() - 1; i >= 0; i--)
 	{
 		if (ShouldRemoveLaunchInstance(LaunchInstancesWithoutOwner[i]))
+		{
 			LaunchInstancesWithoutOwner.RemoveAt(i);
+			continue;
+		}
 
 		TickLaunchInstance(LaunchInstancesWithoutOwner[i], DeltaTime);
 	}

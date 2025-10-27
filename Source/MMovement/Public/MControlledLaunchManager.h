@@ -66,9 +66,7 @@ struct FMControlledLaunchManager_LaunchInstance
 };
 
 class UCharacterMovementComponent;
-/**
- * 
- */
+
 UCLASS(BlueprintType)
 class MMOVEMENT_API UMControlledLaunchManager : public UObject
 {
