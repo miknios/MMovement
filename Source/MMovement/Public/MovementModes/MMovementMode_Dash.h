@@ -140,9 +140,6 @@ struct FMCharacterMovement_DashRuntimeData
 	TSet<AActor*> DamagedActors;
 };
 
-/**
- * 
- */
 UCLASS()
 class MMOVEMENT_API UMMovementMode_Dash : public UMMovementMode_Base
 {

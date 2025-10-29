@@ -10,6 +10,10 @@ void FMControlledLaunchManager_LaunchInstance::ProcessAndCombine(FMControlledLau
 {
 	if (LaunchParams.bInfluenceInputAcceleration)
 	{
+		const float AccelerationMultiplier = FMath::Clamp(
+			LaunchParams.AccelerationMultiplierCurve->GetFloatValue(DurationTimer.GetProgressNormalized()), 0, 1);
+		ProcessResult.AccelerationMultiplier *= AccelerationMultiplier;
+
 		if (LaunchParams.bAllowFullInputAccelerationPerpendicularToLaunchDirection)
 		{
 			FVector LaunchDirectionHorizontal = LaunchVelocity;
@@ -21,8 +25,7 @@ void FMControlledLaunchManager_LaunchInstance::ProcessAndCombine(FMControlledLau
 
 			// Get acceleration in launch direction and scale it
 			FVector AccelerationInLaunchDir = ProcessResult.Acceleration - AccelerationPerp;
-			AccelerationInLaunchDir *= FMath::Clamp(
-				LaunchParams.AccelerationMultiplierCurve->GetFloatValue(DurationTimer.GetProgressNormalized()), 0, 1);
+			AccelerationInLaunchDir *= AccelerationMultiplier;
 
 			// Combine separated acceleration vectors
 			const FVector ResultAcceleration = AccelerationPerp + AccelerationInLaunchDir;
@@ -30,19 +33,81 @@ void FMControlledLaunchManager_LaunchInstance::ProcessAndCombine(FMControlledLau
 		}
 		else
 		{
-			ProcessResult.Acceleration *= FMath::Clamp(
-				LaunchParams.AccelerationMultiplierCurve->GetFloatValue(DurationTimer.GetProgressNormalized()), 0, 1);
+			ProcessResult.Acceleration *= AccelerationMultiplier;
 		}
 	}
 
 	if (LaunchParams.bInfluenceBreakingDeceleration)
+	{
 		ProcessResult.BrakingDecelerationMultiplier *= LaunchParams.BrakingDecelerationMultiplierCurve->GetFloatValue(
 			DurationTimer.GetProgressNormalized());
+	}
 
 	if (LaunchParams.bInfluenceGravity)
+	{
 		ProcessResult.GravityMultiplier *= FMath::Clamp(
 			LaunchParams.GravityMultiplierCurve->GetFloatValue(DurationTimer.GetProgressNormalized()), 0, 1);
+	}
 }
+
+#if ENABLE_VISUAL_LOG
+void UMControlledLaunchManager::GrabDebugSnapshot(FVisualLogEntry* Snapshot) const
+{
+	FVisualLogStatusCategory& MovementCmpCategory = Snapshot->Status.Last();
+	FVisualLogStatusCategory ControlledLaunchManagerCategory(TEXT("Controlled Launch Manager"));
+
+	FMControlledLaunchManager_ProcessResult ProcessResult = Process(FVector::ForwardVector);
+	ControlledLaunchManagerCategory.Add(TEXT("Acceleration Multiplier"),
+	                                    FString::Printf(TEXT("%.2f"), ProcessResult.AccelerationMultiplier));
+
+	ControlledLaunchManagerCategory.Add(TEXT("Braking Deceleration Multiplier"),
+	                                    FString::Printf(TEXT("%.2f"), ProcessResult.BrakingDecelerationMultiplier));
+
+	ControlledLaunchManagerCategory.Add(TEXT("Gravity Multiplier"),
+	                                    FString::Printf(TEXT("%.2f"),
+	                                                    ProcessResult.GravityMultiplier));
+
+	FVisualLogStatusCategory LaunchInstancesCategory(TEXT("Instances"));
+
+	int InstanceIndex = 0;
+	ForEachActiveLaunchInstanceConst(
+		[&InstanceIndex, &LaunchInstancesCategory](const FMControlledLaunchManager_LaunchInstance& LaunchInstance)
+		{
+			FVisualLogStatusCategory LaunchInstanceCategory(FString::Printf(TEXT("Instance %d"), InstanceIndex++));
+
+			LaunchInstanceCategory.Add(TEXT("Duration"),
+			                           FString::Printf(TEXT("%.2f/%.2f"),
+			                                           LaunchInstance.DurationTimer.GetTimeElapsed(),
+			                                           LaunchInstance.DurationTimer.GetDuration()));
+
+			LaunchInstanceCategory.Add(TEXT("Walking Block"),
+			                           FString::Printf(TEXT("%.2f/%.2f"),
+			                                           LaunchInstance.WalkingBlockTimer.GetTimeElapsed(),
+			                                           LaunchInstance.WalkingBlockTimer.GetDuration()));
+
+			FMControlledLaunchManager_ProcessResult InstanceProcessResult;
+			LaunchInstance.ProcessAndCombine(InstanceProcessResult);
+
+			LaunchInstanceCategory.Add(TEXT("Acceleration Multiplier"),
+			                           FString::Printf(TEXT("%.2f"), InstanceProcessResult.AccelerationMultiplier));
+
+			LaunchInstanceCategory.Add(TEXT("Braking Deceleration Multiplier"),
+			                           FString::Printf(TEXT("%.2f"), InstanceProcessResult.BrakingDecelerationMultiplier));
+
+			LaunchInstanceCategory.Add(TEXT("Gravity Multiplier"),
+			                           FString::Printf(TEXT("%.2f"),
+			                                           InstanceProcessResult.GravityMultiplier));
+
+			LaunchInstancesCategory.AddChild(LaunchInstanceCategory);
+
+			return true;
+		});
+
+	ControlledLaunchManagerCategory.AddChild(LaunchInstancesCategory);
+
+	MovementCmpCategory.AddChild(ControlledLaunchManagerCategory);
+}
+#endif
 
 bool UMControlledLaunchManager::IsAnyControlledLaunchActive() const
 {
@@ -51,19 +116,19 @@ bool UMControlledLaunchManager::IsAnyControlledLaunchActive() const
 
 bool UMControlledLaunchManager::IsWalkBlockedByControlledLaunch() const
 {
-	for (auto& Element : LaunchInstanceForOwner)
-	{
-		if (!Element.Value.WalkingBlockTimer.IsCompleted())
-			return true;
-	}
-
-	for (const auto& LaunchInstance : LaunchInstancesWithoutOwner)
+	bool bResult = false;
+	ForEachActiveLaunchInstanceConst([&bResult](const FMControlledLaunchManager_LaunchInstance& LaunchInstance)
 	{
 		if (!LaunchInstance.WalkingBlockTimer.IsCompleted())
-			return true;
-	}
+		{
+			bResult = true;
+			return false;
+		}
 
-	return false;
+		return true;
+	});
+
+	return bResult;
 }
 
 void UMControlledLaunchManager::Initialize(UMCharacterMovementComponent* InOwnerMovementComponent)
@@ -134,7 +199,7 @@ void UMControlledLaunchManager::AddControlledLaunch(const FVector& LaunchVelocit
 
 	if (LaunchVelocity.IsNearlyZero())
 	{
-		UE_LOG(LogMMovement, Error, TEXT("Controlled Launch cannot be added, because direction is 0 or nearly 0"));
+		UE_LOG(LogMMovement, Error, TEXT("Controlled Launch cannot be added, because Launch Velocity is 0 or nearly 0"));
 		return;
 	}
 
@@ -161,21 +226,60 @@ void UMControlledLaunchManager::ClearAllLaunches()
 	LaunchInstancesWithoutOwner.Empty();
 }
 
-FMControlledLaunchManager_ProcessResult UMControlledLaunchManager::Process(const FVector& AccelerationCurrent)
+FMControlledLaunchManager_ProcessResult UMControlledLaunchManager::Process(const FVector& AccelerationCurrent) const
 {
 	FMControlledLaunchManager_ProcessResult ProcessResult = FMControlledLaunchManager_ProcessResult(AccelerationCurrent);
 
-	for (const auto& Element : LaunchInstanceForOwner)
+	ForEachActiveLaunchInstanceConst([&ProcessResult](const FMControlledLaunchManager_LaunchInstance& LaunchInstance)
 	{
-		Element.Value.ProcessAndCombine(ProcessResult);
+		LaunchInstance.ProcessAndCombine(ProcessResult);
+		return true;
+	});
+
+	return ProcessResult;
+}
+
+void UMControlledLaunchManager::ForEachActiveLaunchInstance(const TFunctionRef<bool(FMControlledLaunchManager_LaunchInstance&)>& Func)
+{
+	for (auto& [Owner, LaunchInstance] : LaunchInstanceForOwner)
+	{
+		const bool bContinue = Func(LaunchInstance);
+		if (!bContinue)
+		{
+			return;
+		}
+	}
+
+	for (FMControlledLaunchManager_LaunchInstance& LaunchInstance : LaunchInstancesWithoutOwner)
+	{
+		const bool bContinue = Func(LaunchInstance);
+		if (!bContinue)
+		{
+			return;
+		}
+	}
+}
+
+void UMControlledLaunchManager::ForEachActiveLaunchInstanceConst(
+	const TFunctionRef<bool(const FMControlledLaunchManager_LaunchInstance&)>& Func) const
+{
+	for (const auto& [Owner, LaunchInstance] : LaunchInstanceForOwner)
+	{
+		const bool bContinue = Func(LaunchInstance);
+		if (!bContinue)
+		{
+			return;
+		}
 	}
 
 	for (const FMControlledLaunchManager_LaunchInstance& LaunchInstance : LaunchInstancesWithoutOwner)
 	{
-		LaunchInstance.ProcessAndCombine(ProcessResult);
+		const bool bContinue = Func(LaunchInstance);
+		if (!bContinue)
+		{
+			return;
+		}
 	}
-
-	return ProcessResult;
 }
 
 void UMControlledLaunchManager::TickLaunchInstance(FMControlledLaunchManager_LaunchInstance& LaunchInstance, float DeltaTime)

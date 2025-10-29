@@ -32,6 +32,9 @@ struct FMCharacterMovementComponent_DefaultValues
 	float BrakingDecelerationFalling;
 
 	UPROPERTY(VisibleInstanceOnly)
+	float BrakingFrictionFactor;
+
+	UPROPERTY(VisibleInstanceOnly)
 	float GravityScale;
 };
 

@@ -24,8 +24,9 @@ void UMCharacterMovementComponent::BeginPlay()
 	// Save defaults
 	DefaultValues.MaxWalkSpeed = MaxWalkSpeed;
 	DefaultValues.MaxAcceleration = GetMaxAcceleration();
-	DefaultValues.BrakingDecelerationFalling = BrakingDecelerationFalling;
 	DefaultValues.BrakingDecelerationWalking = BrakingDecelerationWalking;
+	DefaultValues.BrakingDecelerationFalling = BrakingDecelerationFalling;
+	DefaultValues.BrakingFrictionFactor = BrakingFrictionFactor;
 	DefaultValues.GravityScale = GravityScale;
 
 	ControlledLaunchManager->Initialize(this);
@@ -53,8 +54,9 @@ void UMCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tic
 
 	const FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(Acceleration);
 
-	BrakingDecelerationFalling = DefaultValues.BrakingDecelerationFalling * ControlledLaunchResult.BrakingDecelerationMultiplier;
 	BrakingDecelerationWalking = DefaultValues.BrakingDecelerationWalking * ControlledLaunchResult.BrakingDecelerationMultiplier;
+	BrakingDecelerationFalling = DefaultValues.BrakingDecelerationFalling * ControlledLaunchResult.BrakingDecelerationMultiplier;
+	BrakingFrictionFactor = DefaultValues.BrakingFrictionFactor * ControlledLaunchResult.BrakingDecelerationMultiplier;
 	GravityScale = DefaultValues.GravityScale * ControlledLaunchResult.GravityMultiplier;
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -67,33 +69,34 @@ void UMCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tic
 		CustomMovementModeInstance->Tick(DeltaTime);
 	}
 
-	if (CVarShowMovementDebugs.GetValueOnGameThread())
-	{
-		FString MovementModeStr;
-		if (IsCurrentMovementModeCustom())
-		{
-			const UMMovementMode_Base* MovementModeCurrent = GetActiveCustomMovementModeInstance();
-			MovementModeStr = MovementModeCurrent->GetName();
-		}
-		else
-		{
-			MovementModeStr = UEnum::GetDisplayValueAsText(MovementMode).ToString();
-		}
-
-		GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Movement Mode: %s"), *MovementModeStr), true,
-		                                 FVector2D::UnitVector * 2);
-
-		GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Horizontal Speed: %.2f"), Velocity.Size2D() / 100.0f),
-		                                 true,
-		                                 FVector2D::UnitVector * 2);
-
-		GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Vertical Speed: %.2f"), Velocity.Z / 100.0f),
-		                                 true,
-		                                 FVector2D::UnitVector * 2);
-
-		DrawDebugDirection(GetMovementInputVectorLast(), FColor::Blue, TEXT("Input"));
-		DrawDebugDirection(Velocity / 100.0f, FColor::White, TEXT("Velocity"));
-	}
+	// TODO: remove because VLogger does that better
+	// if (CVarShowMovementDebugs.GetValueOnGameThread())
+	// {
+	// 	FString MovementModeStr;
+	// 	if (IsCurrentMovementModeCustom())
+	// 	{
+	// 		const UMMovementMode_Base* MovementModeCurrent = GetActiveCustomMovementModeInstance();
+	// 		MovementModeStr = MovementModeCurrent->GetName();
+	// 	}
+	// 	else
+	// 	{
+	// 		MovementModeStr = UEnum::GetDisplayValueAsText(MovementMode).ToString();
+	// 	}
+	//
+	// 	GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Movement Mode: %s"), *MovementModeStr), true,
+	// 	                                 FVector2D::UnitVector * 2);
+	//
+	// 	GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Horizontal Speed: %.2f"), Velocity.Size2D() / 100.0f),
+	// 	                                 true,
+	// 	                                 FVector2D::UnitVector * 2);
+	//
+	// 	GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Vertical Speed: %.2f"), Velocity.Z / 100.0f),
+	// 	                                 true,
+	// 	                                 FVector2D::UnitVector * 2);
+	//
+	// 	DrawDebugDirection(GetMovementInputVectorLast(), FColor::Blue, TEXT("Input"));
+	// 	DrawDebugDirection(Velocity / 100.0f, FColor::White, TEXT("Velocity"));
+	// }
 }
 
 FRotator UMCharacterMovementComponent::ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime,
@@ -226,14 +229,30 @@ void UMCharacterMovementComponent::GrabDebugSnapshot(struct FVisualLogEntry* Sna
 	const FVector ArrowStart = CharacterOwner->GetActorLocation();
 
 	// Draw Facing Direction
-	const FVector FacingDirectionArrowEnd = ArrowStart + CharacterOwner->GetActorForwardVector() * ArrowLength;
-	Snapshot->AddArrow(ArrowStart, FacingDirectionArrowEnd, CmpCategoryName, ELogVerbosity::Display,
+	const FVector FacingDirectionZOffset = FVector::UpVector * 50;
+	const FVector FacingDirectionArrowEnd = ArrowStart + CharacterOwner->GetActorForwardVector() * ArrowLength + FacingDirectionZOffset;
+	Snapshot->AddArrow(ArrowStart + FacingDirectionZOffset, FacingDirectionArrowEnd, CmpCategoryName, ELogVerbosity::Display,
 	                   FColor::White, TEXT("Facing Direction"));
 
 	// Draw Velocity Direction
-	const FVector VelocityDirectionArrowEnd = ArrowStart + Velocity.GetSafeNormal() * ArrowLength;
-	Snapshot->AddArrow(ArrowStart, VelocityDirectionArrowEnd, CmpCategoryName, ELogVerbosity::Display,
-	                   FColor::Blue, TEXT("Velocity Direction"));
+	if (!Velocity.IsNearlyZero())
+	{
+		const FVector VelocityDirectionArrowEnd = ArrowStart + Velocity.GetSafeNormal() * ArrowLength;
+		Snapshot->AddArrow(ArrowStart, VelocityDirectionArrowEnd, CmpCategoryName, ELogVerbosity::Display,
+		                   FColor::Blue, TEXT("Velocity Direction"));
+	}
+
+	// Draw Input
+	const FVector InputVector = GetMovementInputVectorLast();
+	if (!InputVector.IsNearlyZero())
+	{
+		const FVector InputDirectionZOffset = FVector::UpVector * 100;
+		const FVector InputDirectionArrowEnd = ArrowStart + InputVector * ArrowLength +
+			InputDirectionZOffset;
+		Snapshot->AddArrow(ArrowStart + InputDirectionZOffset, InputDirectionArrowEnd, CmpCategoryName,
+		                   ELogVerbosity::Display,
+		                   FColor::Green, TEXT("Input Direction"));
+	}
 
 	const float HorizontalSpeed = FVector2D(Velocity.X, Velocity.Y).Length();
 	CmpCategory.Add(TEXT("H Speed"), FString::Printf(TEXT("%.2f"), HorizontalSpeed));
@@ -241,11 +260,19 @@ void UMCharacterMovementComponent::GrabDebugSnapshot(struct FVisualLogEntry* Sna
 	const float VerticalSpeed = Velocity.Z;
 	CmpCategory.Add(TEXT("V Speed"), FString::Printf(TEXT("%.2f"), VerticalSpeed));
 
+	const float AccelerationLength = Acceleration.Size();
+	CmpCategory.Add(TEXT("Acceleration"), FString::Printf(TEXT("%.2f"), AccelerationLength));
+
 	for (const auto CustomMovementModeInstance : CustomMovementModeInstances)
 	{
 		const IVisualLoggerDebugSnapshotInterface* VisualLoggerMovementMode =
 			Cast<IVisualLoggerDebugSnapshotInterface>(CustomMovementModeInstance);
 		VisualLoggerMovementMode->GrabDebugSnapshot(Snapshot);
+	}
+
+	if (ControlledLaunchManager != nullptr)
+	{
+		ControlledLaunchManager->GrabDebugSnapshot(Snapshot);
 	}
 }
 #endif

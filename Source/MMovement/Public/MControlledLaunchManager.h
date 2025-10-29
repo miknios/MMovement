@@ -17,6 +17,9 @@ struct FMControlledLaunchManager_ProcessResult
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere)
+	float AccelerationMultiplier = 1;
+
+	UPROPERTY(VisibleAnywhere)
 	FVector Acceleration = FVector::ZeroVector;
 
 	UPROPERTY(VisibleAnywhere)
@@ -25,10 +28,12 @@ struct FMControlledLaunchManager_ProcessResult
 	UPROPERTY(VisibleAnywhere)
 	float GravityMultiplier = 1;
 
+
 	FMControlledLaunchManager_ProcessResult() = default;
 
 	FMControlledLaunchManager_ProcessResult(const FVector& Acceleration)
-		: Acceleration(Acceleration),
+		: AccelerationMultiplier(1),
+		  Acceleration(Acceleration),
 		  BrakingDecelerationMultiplier(1),
 		  GravityMultiplier(1)
 	{
@@ -68,31 +73,41 @@ struct FMControlledLaunchManager_LaunchInstance
 class UCharacterMovementComponent;
 
 UCLASS(BlueprintType)
-class MMOVEMENT_API UMControlledLaunchManager : public UObject
+class MMOVEMENT_API UMControlledLaunchManager : public UObject, public IVisualLoggerDebugSnapshotInterface
 {
 	GENERATED_BODY()
 
 public:
+	// IVisualLoggerDebugSnapshotInterface
+#if ENABLE_VISUAL_LOG
+	virtual void GrabDebugSnapshot(struct FVisualLogEntry* Snapshot) const override;
+#endif
+	// ~ IVisualLoggerDebugSnapshotInterface
+
 	UFUNCTION(BlueprintCallable)
 	bool IsAnyControlledLaunchActive() const;
 
 	UFUNCTION(BlueprintCallable)
 	bool IsWalkBlockedByControlledLaunch() const;
-
-	void Initialize(UMCharacterMovementComponent* InOwnerMovementComponent);
-
-	void TickLaunches(float DeltaTime);
-
-	void AddControlledLaunch(const FVector& LaunchVelocity, const FMControlledLaunchParams& LaunchParams, UObject* Owner);
-
+	
 	UFUNCTION(BlueprintCallable)
 	void ClearAllLaunches();
 
-	FMControlledLaunchManager_ProcessResult Process(const FVector& AccelerationCurrent);
+	void Initialize(UMCharacterMovementComponent* InOwnerMovementComponent);
+	void TickLaunches(float DeltaTime);
+	void AddControlledLaunch(const FVector& LaunchVelocity, const FMControlledLaunchParams& LaunchParams, UObject* Owner);
+	FMControlledLaunchManager_ProcessResult Process(const FVector& AccelerationCurrent) const;
+
+	// Takes a function to execute for each active controlled launch instance
+	// Return true if you want to continue iterating
+	void ForEachActiveLaunchInstance(const TFunctionRef<bool(FMControlledLaunchManager_LaunchInstance&)>& Func);
+
+	// Takes a function to execute for each active controlled launch instance
+	// Return true if you want to continue iterating
+	void ForEachActiveLaunchInstanceConst(const TFunctionRef<bool(const FMControlledLaunchManager_LaunchInstance&)>& Func) const;
 
 protected:
 	void TickLaunchInstance(FMControlledLaunchManager_LaunchInstance& LaunchInstance, float DeltaTime);
-
 	bool ShouldRemoveLaunchInstance(const FMControlledLaunchManager_LaunchInstance& LaunchInstance) const;
 
 protected:
