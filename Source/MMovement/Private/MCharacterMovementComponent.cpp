@@ -8,18 +8,18 @@
 #include "MMath.h"
 #include "MMovementMode_Base.h"
 #include "MMovementMode_OrientToMovementInterface.h"
-#include "MMovementTypes.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
 
 UMCharacterMovementComponent::UMCharacterMovementComponent()
 {
-	ControlledLaunchManager = CreateDefaultSubobject<UMControlledLaunchManager>(TEXT("ControlledLaunchManager"));
 }
 
 void UMCharacterMovementComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	ControlledLaunchManager = NewObject<UMControlledLaunchManager>(this, TEXT("ControlledLaunchManager"));
 
 	// Save defaults
 	DefaultValues.MaxWalkSpeed = MaxWalkSpeed;
@@ -50,14 +50,17 @@ void UMCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	}
 
 	// Manage controlled launch and apply multipliers
-	ControlledLaunchManager->TickLaunches(DeltaTime);
+	if (IsValid(ControlledLaunchManager))
+	{
+		ControlledLaunchManager->TickLaunches(DeltaTime);
 
-	const FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(Acceleration);
+		const FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(Acceleration);
 
-	BrakingDecelerationWalking = DefaultValues.BrakingDecelerationWalking * ControlledLaunchResult.BrakingDecelerationMultiplier;
-	BrakingDecelerationFalling = DefaultValues.BrakingDecelerationFalling * ControlledLaunchResult.BrakingDecelerationMultiplier;
-	BrakingFrictionFactor = DefaultValues.BrakingFrictionFactor * ControlledLaunchResult.BrakingDecelerationMultiplier;
-	GravityScale = DefaultValues.GravityScale * ControlledLaunchResult.GravityMultiplier;
+		BrakingDecelerationWalking = DefaultValues.BrakingDecelerationWalking * ControlledLaunchResult.BrakingDecelerationMultiplier;
+		BrakingDecelerationFalling = DefaultValues.BrakingDecelerationFalling * ControlledLaunchResult.BrakingDecelerationMultiplier;
+		BrakingFrictionFactor = DefaultValues.BrakingFrictionFactor * ControlledLaunchResult.BrakingDecelerationMultiplier;
+		GravityScale = DefaultValues.GravityScale * ControlledLaunchResult.GravityMultiplier;
+	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
@@ -68,35 +71,6 @@ void UMCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	{
 		CustomMovementModeInstance->Tick(DeltaTime);
 	}
-
-	// TODO: remove because VLogger does that better
-	// if (CVarShowMovementDebugs.GetValueOnGameThread())
-	// {
-	// 	FString MovementModeStr;
-	// 	if (IsCurrentMovementModeCustom())
-	// 	{
-	// 		const UMMovementMode_Base* MovementModeCurrent = GetActiveCustomMovementModeInstance();
-	// 		MovementModeStr = MovementModeCurrent->GetName();
-	// 	}
-	// 	else
-	// 	{
-	// 		MovementModeStr = UEnum::GetDisplayValueAsText(MovementMode).ToString();
-	// 	}
-	//
-	// 	GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Movement Mode: %s"), *MovementModeStr), true,
-	// 	                                 FVector2D::UnitVector * 2);
-	//
-	// 	GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Horizontal Speed: %.2f"), Velocity.Size2D() / 100.0f),
-	// 	                                 true,
-	// 	                                 FVector2D::UnitVector * 2);
-	//
-	// 	GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Vertical Speed: %.2f"), Velocity.Z / 100.0f),
-	// 	                                 true,
-	// 	                                 FVector2D::UnitVector * 2);
-	//
-	// 	DrawDebugDirection(GetMovementInputVectorLast(), FColor::Blue, TEXT("Input"));
-	// 	DrawDebugDirection(Velocity / 100.0f, FColor::White, TEXT("Velocity"));
-	// }
 }
 
 FRotator UMCharacterMovementComponent::ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime,
@@ -117,6 +91,11 @@ void UMCharacterMovementComponent::AddControlledLaunchFromParams(const FVector& 
                                                                  const FMControlledLaunchParams& LaunchParams,
                                                                  UObject* Owner)
 {
+	if (!IsValid(ControlledLaunchManager))
+	{
+		return;
+	}
+
 	ControlledLaunchManager->AddControlledLaunch(LaunchVelocity, LaunchParams, Owner);
 }
 
@@ -456,7 +435,7 @@ bool UMCharacterMovementComponent::IsFalling() const
 
 bool UMCharacterMovementComponent::IsWalkable(const FHitResult& Hit) const
 {
-	if (ControlledLaunchManager->IsWalkBlockedByControlledLaunch())
+	if (IsValid(ControlledLaunchManager) && ControlledLaunchManager->IsWalkBlockedByControlledLaunch())
 		return false;
 
 	return Super::IsWalkable(Hit);
@@ -465,9 +444,15 @@ bool UMCharacterMovementComponent::IsWalkable(const FHitResult& Hit) const
 FVector UMCharacterMovementComponent::ScaleInputAcceleration(const FVector& InputAcceleration) const
 {
 	const FVector InputAccelerationScaled = Super::ScaleInputAcceleration(InputAcceleration);
-	FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(InputAccelerationScaled);
 
-	return ControlledLaunchResult.Acceleration;
+	FVector Result = InputAccelerationScaled;
+	if (IsValid(ControlledLaunchManager))
+	{
+		const FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(InputAccelerationScaled);
+		Result = ControlledLaunchResult.Acceleration;
+	}
+
+	return Result;
 }
 
 UPrimitiveComponent* UMCharacterMovementComponent::GetMovementBaseCustom() const
