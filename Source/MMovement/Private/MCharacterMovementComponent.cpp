@@ -225,6 +225,17 @@ void UMCharacterMovementComponent::GrabDebugSnapshot(struct FVisualLogEntry* Sna
 		                   FColor::Green, TEXT("Input Direction"));
 	}
 
+	// Draw Acceleration
+	const FVector AccelerationDirectionZOffset = FVector::UpVector * 70;
+	if (!Acceleration.IsNearlyZero())
+	{
+		const FVector AccelerationDirectionArrowEnd = ArrowStart + Acceleration.GetSafeNormal() * ArrowLength +
+			AccelerationDirectionZOffset;
+		Snapshot->AddArrow(ArrowStart + AccelerationDirectionZOffset, AccelerationDirectionArrowEnd, CmpCategoryName,
+		                   ELogVerbosity::Display,
+		                   FColor::Green.WithAlpha(0.5f), TEXT("Acceleration Direction"));
+	}
+
 	const float HorizontalSpeed = FVector2D(Velocity.X, Velocity.Y).Length();
 	CmpCategory.Add(TEXT("H Speed"), FString::Printf(TEXT("%.2f"), HorizontalSpeed));
 
