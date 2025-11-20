@@ -30,7 +30,7 @@ public:
 	// ~ IMResettable
 	virtual void Reset_Implementation(bool bHardReset) override;
 	// ~ IMResettable
-	
+
 	void Initialize(ACharacter* InCharacterOwner, UMCharacterMovementComponent* InMovementComponent);
 
 	// Called at the moment of instantiation
@@ -76,7 +76,7 @@ public:
 	FName GetMovementModeName() const;
 
 	// Called every frame by MCharacterMovementComponent when this movement mode is active 
-	void GetInputVector();
+	// void GetInputVector();
 
 	FString GetCanStartFailReasonCache() const { return CanStartFailReasonCache; }
 	void SetCanStartFailReasonCache(const FString& FailReason) { CanStartFailReasonCache = FailReason; }
@@ -122,9 +122,6 @@ protected:
 	// The component that is updated and moved
 	UPROPERTY(BlueprintReadOnly)
 	TObjectPtr<USceneComponent> UpdatedComponent;
-
-	UPROPERTY(VisibleInstanceOnly, Category = "Debug")
-	FVector InputVector;
 
 	bool bMovementModeActive;
 

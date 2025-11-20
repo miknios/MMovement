@@ -246,11 +246,12 @@ void UMMovementMode_Dash::OnDashChargeAmountChanged(int32 ValueOld, int32 ValueN
 void UMMovementMode_Dash::CalculateInitialValues()
 {
 	FVector DashDirection = CharacterOwner->GetControlRotation().Vector();
+	const FVector InputDirection = MovementComponent->GetMovementInputVectorLast();
 
-	if (DashConfig.bUseInputDirection && InputVector.SizeSquared() > 0)
+	if (DashConfig.bUseInputDirection && InputDirection.SizeSquared() > 0)
 	{
-		FVector InputVectorRotated = InputVector.RotateAngleAxis(-CharacterOwner->GetControlRotation().Pitch,
-		                                                         CharacterOwner->GetActorRightVector());
+		FVector InputVectorRotated = InputDirection.RotateAngleAxis(-CharacterOwner->GetControlRotation().Pitch,
+		                                                            CharacterOwner->GetActorRightVector());
 		DashDirection = InputVectorRotated;
 	}
 

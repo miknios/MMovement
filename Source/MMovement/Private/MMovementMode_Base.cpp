@@ -81,11 +81,6 @@ FName UMMovementMode_Base::GetMovementModeName() const
 	return MovementModeName;
 }
 
-void UMMovementMode_Base::GetInputVector()
-{
-	InputVector = CharacterOwner->GetPendingMovementInputVector();
-}
-
 FVector UMMovementMode_Base::GetOwnerLocation() const
 {
 	return CharacterOwner->GetActorLocation();

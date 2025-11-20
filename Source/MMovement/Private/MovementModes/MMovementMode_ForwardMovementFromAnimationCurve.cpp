@@ -148,6 +148,7 @@ void UMMovementMode_ForwardMovementFromAnimationCurve::Phys_Implementation(float
 
 	if (RuntimeData.bNeedsToCalculateOrientToMovementRotation)
 	{
+		const FVector InputVector = MovementComponent->GetMovementInputVectorLast();
 		RuntimeData.OrientToMovementRotation = InputVector.IsNearlyZero()
 			                                       ? CharacterOwner->GetActorRotation()
 			                                       : InputVector.Rotation();

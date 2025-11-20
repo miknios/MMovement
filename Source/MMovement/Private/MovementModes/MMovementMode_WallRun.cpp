@@ -317,7 +317,7 @@ bool UMMovementMode_WallRun::IsMovingOnSurface_Implementation()
 }
 
 #if ENABLE_VISUAL_LOG
-void UMMovementMode_WallRun::AddVisualLoggerInfo(struct FVisualLogEntry* Snapshot,
+void UMMovementMode_WallRun::AddVisualLoggerInfo(FVisualLogEntry* Snapshot,
                                                  FVisualLogStatusCategory& MovementCmpCategory,
                                                  FVisualLogStatusCategory& MovementModeCategory) const
 {

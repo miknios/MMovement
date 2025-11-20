@@ -207,7 +207,7 @@ public:
 protected:
 	// UMMovementMode_Base
 #if ENABLE_VISUAL_LOG
-	virtual void AddVisualLoggerInfo(struct FVisualLogEntry* Snapshot,
+	virtual void AddVisualLoggerInfo(FVisualLogEntry* Snapshot,
 	                                 FVisualLogStatusCategory& MovementCmpCategory,
 	                                 FVisualLogStatusCategory& MovementModeCategory) const override;
 #endif

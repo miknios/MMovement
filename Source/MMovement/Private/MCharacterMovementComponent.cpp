@@ -41,14 +41,6 @@ void UMCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	if (!MovementInputVectorLast.IsNearlyZero())
 		MovementInputVectorActiveLast = MovementInputVectorLast;
 
-	// Consume input for custom movement mode (by default consumed input is used by CMC to drive acceleration vector regardless of movement mode)
-	// It has to be done before Super::TickComponent, because ConsumeInput zeroes pending input and it won't be used for changing acceleration
-	UMMovementMode_Base* ActiveCustomMovementMode = GetActiveCustomMovementModeInstance();
-	if (IsValid(ActiveCustomMovementMode))
-	{
-		ActiveCustomMovementMode->GetInputVector();
-	}
-
 	// Manage controlled launch and apply multipliers
 	if (IsValid(ControlledLaunchManager))
 	{

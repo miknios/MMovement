@@ -397,6 +397,7 @@ FVector UMMovementMode_Slide::GetPlayerDesiredSlideDirection() const
 	}
 	else if (SlideConfig.PlayerDesiredDirectionType == EMMovementMode_SlidePlayerDesiredDirectionType::MovementInputDirection)
 	{
+		const FVector InputVector = MovementComponent->GetMovementInputVectorLast();
 		if (InputVector.SizeSquared() > 0)
 		{
 			PlayerDesiredDirection = InputVector.GetSafeNormal();
