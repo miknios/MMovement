@@ -70,11 +70,11 @@ struct FMMovementMode_SlideConfig
 
 	// Surfaces with these tags will be excluded from slope detection
 	UPROPERTY(EditAnywhere, Category = "Slide Config|Slope")
-	TArray<FName> SlopeSurfaceDetectionExclusionTags;
+	TArray<FName> SlopeSurfaceDetectionExclusionTags = TArray<FName>();
 
 	// Only surfaces with this tag will be included for slope detection. Leave empty to include all surfaces
 	UPROPERTY(EditAnywhere, Category = "Slide Config|Slope")
-	FName SlopeSurfaceDetectionRequirementTag;
+	FName SlopeSurfaceDetectionRequirementTag = FName();
 
 	UPROPERTY(EditAnywhere, Category = "Slide Config|Surface Detection")
 	float SlideSurfaceDetectionMaxTraceDistance = 300;
@@ -85,7 +85,7 @@ struct FMMovementMode_SlideConfig
 
 	// Only surfaces with this tag will be included for slidable surface detection. Leave empty to include all surfaces
 	UPROPERTY(EditAnywhere, Category = "Slide Config|Surface Detection")
-	FName SlideSurfaceDetectionRequirementTag;
+	FName SlideSurfaceDetectionRequirementTag = FName();
 
 	UPROPERTY(EditAnywhere)
 	float SurfaceSnapOffset = 100;
@@ -134,10 +134,10 @@ struct FMMovementMode_SlideConfig
 
 	UPROPERTY(EditAnywhere, Category = "Slide Config|Jump Off",
 		meta = (EditCondition = "JumpOffVelocityCalculationType == EMMovementMode_SlideJumpOffVelocityCalculationType::FixedVerticalSpeed"))
-	float FixedJumpOffVerticalSpeed;
+	float FixedJumpOffVerticalSpeed = 0;
 
 	UPROPERTY(EditAnywhere, Category = "Slide Config|Jump Off")
-	UMControlledLaunchAsset* JumpOffControlledLaunchAsset;
+	UMControlledLaunchAsset* JumpOffControlledLaunchAsset = nullptr;
 };
 
 USTRUCT(BlueprintType)

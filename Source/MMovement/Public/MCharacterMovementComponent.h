@@ -20,22 +20,22 @@ struct FMCharacterMovementComponent_DefaultValues
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleInstanceOnly)
-	float MaxWalkSpeed;
+	float MaxWalkSpeed = 0;
 
 	UPROPERTY(VisibleInstanceOnly)
-	float MaxAcceleration;
+	float MaxAcceleration = 0;
 
 	UPROPERTY(VisibleInstanceOnly)
-	float BrakingDecelerationWalking;
+	float BrakingDecelerationWalking = 0;
 
 	UPROPERTY(VisibleInstanceOnly)
-	float BrakingDecelerationFalling;
+	float BrakingDecelerationFalling = 0;
 
 	UPROPERTY(VisibleInstanceOnly)
-	float BrakingFrictionFactor;
+	float BrakingFrictionFactor = 0;
 
 	UPROPERTY(VisibleInstanceOnly)
-	float GravityScale;
+	float GravityScale = 0;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FMOnJumpedSignature);

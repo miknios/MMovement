@@ -31,7 +31,7 @@ struct MMOVEMENT_API FMCharacterMovement_WallRunSurfaceInfo
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere)
-	bool bValid;
+	bool bValid = false;
 
 	UPROPERTY(VisibleAnywhere)
 	FVector SnapLocation = FVector::ZeroVector;
@@ -40,7 +40,7 @@ struct MMOVEMENT_API FMCharacterMovement_WallRunSurfaceInfo
 	FVector Normal = FVector::ZeroVector;
 
 	UPROPERTY(VisibleAnywhere)
-	UPrimitiveComponent* PrimitiveComponent;
+	UPrimitiveComponent* PrimitiveComponent = nullptr;
 };
 
 USTRUCT(BlueprintType)
@@ -95,7 +95,7 @@ struct MMOVEMENT_API FMCharacterMovement_WallRunConfig
 	bool bJumpOffRotateCharacterToVelocity = false;
 
 	UPROPERTY(EditAnywhere, Category = "Wall Run Config|Speed|Jump Off")
-	UMControlledLaunchAsset* JumpOffControlledLaunchAsset;
+	UMControlledLaunchAsset* JumpOffControlledLaunchAsset = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Wall Run Config|Gravity")
 	bool bGravityEnabled = true;
@@ -107,10 +107,10 @@ struct MMOVEMENT_API FMCharacterMovement_WallRunConfig
 	float GravityApexTime = 2;
 
 	UPROPERTY(EditAnywhere, Category = "Wall Run Config|Surface Detection")
-	float MinAngleBetweenSurfaceNormalAndCharacterForwardToStart;
+	float MinAngleBetweenSurfaceNormalAndCharacterForwardToStart = 0;
 
 	UPROPERTY(EditAnywhere, Category = "Wall Run Config|Surface Detection")
-	float MaxAngleBetweenSurfaceNormalAndCharacterForwardToStart;
+	float MaxAngleBetweenSurfaceNormalAndCharacterForwardToStart = 0;
 
 	UPROPERTY(EditAnywhere, Category = "Wall Run Config|Surface Detection")
 	bool bCanStartWallRunningBackwards = false;
@@ -129,11 +129,11 @@ struct MMOVEMENT_API FMCharacterMovement_WallRunConfig
 
 	// Surface with any of these tags will be excluded from wall run
 	UPROPERTY(EditAnywhere, Category = "Wall Run Config|Surface Detection")
-	TArray<FName> SurfaceExclusionTags;
+	TArray<FName> SurfaceExclusionTags = TArray<FName>();
 
 	// Only surfaces with this tag will be included for wall run. Leave empty to include all surfaces
 	UPROPERTY(EditAnywhere, Category = "Wall Run Config|Surface Detection")
-	FName WallRunnableSurfaceTag;
+	FName WallRunnableSurfaceTag = FName();
 
 	// Wall run will be stopped when angle between current and previous surface normal was higher than this
 	UPROPERTY(EditAnywhere, Category = "Wall Run Config|Surface Detection")
@@ -152,19 +152,19 @@ struct MMOVEMENT_API FMCharacterMovement_WallRunRuntimeData
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere)
-	FMManualTimer CooldownTimer;
+	FMManualTimer CooldownTimer = FMManualTimer();
 
 	UPROPERTY(VisibleAnywhere)
-	FMManualTimer GravityApexTimer;
+	FMManualTimer GravityApexTimer = FMManualTimer();
 
 	UPROPERTY(VisibleAnywhere)
-	float HorizontalSpeed;
+	float HorizontalSpeed = 0;
 
 	UPROPERTY(VisibleAnywhere)
-	FMCharacterMovement_WallRunSurfaceInfo SurfaceInfo;
+	FMCharacterMovement_WallRunSurfaceInfo SurfaceInfo = FMCharacterMovement_WallRunSurfaceInfo();
 
 	UPROPERTY(VisibleAnywhere)
-	FMCharacterMovement_WallRunSurfaceInfo SurfaceInfoOld;
+	FMCharacterMovement_WallRunSurfaceInfo SurfaceInfoOld = FMCharacterMovement_WallRunSurfaceInfo();
 };
 
 UENUM(BlueprintType)

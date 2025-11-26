@@ -61,7 +61,7 @@ struct FMCharacterMovement_VerticalWallRunConfig
 	float MinJumpOffHorizontalSpeed = 500;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vertical Wall Run Config|Jump Off")
-	UMControlledLaunchAsset* JumpOffControlledLaunchAsset;
+	UMControlledLaunchAsset* JumpOffControlledLaunchAsset = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vertical Wall Run Config|Jump Off")
 	bool bJumpOffRotateCharacterToVelocity = false;
@@ -97,15 +97,15 @@ struct FMCharacterMovement_VerticalWallRunConfig
 	float WallDetectionCapsuleSizeMultiplier = 0.3f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vertical Wall Run Config|Surface Detection")
-	float MaxDistanceFromWallToStart;
+	float MaxDistanceFromWallToStart = 0;
 
 	// Surface with any of these tags will be excluded from wall run
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vertical Wall Run Config|Surface Detection")
-	TArray<FName> SurfaceExclusionTags;
+	TArray<FName> SurfaceExclusionTags = TArray<FName>();
 
 	// Only surfaces with this tag will be included for vertical wall run. Leave empty to include all surfaces
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vertical Wall Run Config|Surface Detection")
-	FName SurfaceRequirementTag;
+	FName SurfaceRequirementTag = FName();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vertical Wall Run Config|Surface Offset")
 	float OffsetFromWall = 45;
@@ -139,13 +139,13 @@ struct FMCharacterMovement_VerticalWallRunRuntimeData
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FMManualTimer CooldownTimer;
+	FMManualTimer CooldownTimer = FMManualTimer();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	float SpeedCurrent;
+	float SpeedCurrent = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	bool bSlideDownInProgress;
+	bool bSlideDownInProgress = false;
 
 	FMCharacterMovement_VerticalWallRunSurfaceInfo SurfaceInfo;
 

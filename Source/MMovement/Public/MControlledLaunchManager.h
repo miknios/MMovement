@@ -46,16 +46,16 @@ struct FMControlledLaunchManager_LaunchInstance
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere)
-	FMManualTimer DurationTimer;
+	FMManualTimer DurationTimer = FMManualTimer();
 
 	UPROPERTY(VisibleAnywhere)
-	FMManualTimer WalkingBlockTimer;
+	FMManualTimer WalkingBlockTimer = FMManualTimer();
 
 	UPROPERTY(VisibleAnywhere)
-	FMControlledLaunchParams LaunchParams;
+	FMControlledLaunchParams LaunchParams = FMControlledLaunchParams();
 
 	UPROPERTY(VisibleAnywhere)
-	FVector LaunchVelocity;
+	FVector LaunchVelocity = FVector::ZeroVector;
 
 	FMControlledLaunchManager_LaunchInstance() = default;
 

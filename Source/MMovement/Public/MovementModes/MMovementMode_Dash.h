@@ -19,7 +19,7 @@ struct FMOnDashChargeUpdatedData
 	int32 ChargeAmountCurrent = 0;
 
 	UPROPERTY(BlueprintReadOnly)
-	bool bPlayUIAnimation;
+	bool bPlayUIAnimation = false;
 
 	FMOnDashChargeUpdatedData() = default;
 
@@ -43,10 +43,10 @@ struct FMCharacterMovement_DashConfig
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere)
-	TObjectPtr<UInputAction> InputAction;
+	TObjectPtr<UInputAction> InputAction = nullptr;
 
 	UPROPERTY(EditAnywhere)
-	float Distance;
+	float Distance = 0;
 
 	UPROPERTY(EditAnywhere)
 	float Duration = 0.3f;
@@ -80,7 +80,7 @@ struct FMCharacterMovement_DashConfig
 	float PreservedSpeedMin = 1000;
 
 	UPROPERTY(EditAnywhere, Category = "Dash Config|Charges")
-	bool bEnableDashCharges;
+	bool bEnableDashCharges = false;
 
 	UPROPERTY(EditAnywhere, Category = "Dash Config|Charges")
 	int ChargeAmountInitial = 1;
@@ -113,31 +113,31 @@ struct FMCharacterMovement_DashRuntimeData
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleInstanceOnly)
-	bool bInitialValuesCalculated;	
+	bool bInitialValuesCalculated = false;	
 
 	UPROPERTY(VisibleInstanceOnly)
-	int32 ChargesLeft;
+	int32 ChargesLeft = 0;
 
 	UPROPERTY(VisibleInstanceOnly)
-	bool bWantsToDash;
+	bool bWantsToDash = false;
 
 	UPROPERTY(VisibleInstanceOnly)
-	FVector DashDirection;
+	FVector DashDirection = FVector::ZeroVector;
 
 	UPROPERTY(VisibleInstanceOnly)
-	FMManualTimer CooldownTimer;
+	FMManualTimer CooldownTimer = FMManualTimer();
 
 	UPROPERTY(VisibleInstanceOnly)
-	FMManualTimer DurationTimer;
+	FMManualTimer DurationTimer = FMManualTimer();
 
 	UPROPERTY(VisibleInstanceOnly)
-	FVector LocationInitial;
+	FVector LocationInitial = FVector::ZeroVector;
 
 	UPROPERTY(VisibleInstanceOnly)
-	FVector VelocityPreserved;
+	FVector VelocityPreserved = FVector::ZeroVector;
 
 	UPROPERTY(VisibleInstanceOnly)
-	TSet<AActor*> DamagedActors;
+	TSet<AActor*> DamagedActors = TSet<AActor*>();
 };
 
 UCLASS()

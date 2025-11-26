@@ -26,7 +26,7 @@ struct MMOVEMENT_API FMControlledLaunchParams
 
 	// Do we allow full input acceleration in direction perpendicular to launch horizontal direction?
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bInfluenceInputAcceleration", EditConditionHides))
-	bool bAllowFullInputAccelerationPerpendicularToLaunchDirection;
+	bool bAllowFullInputAccelerationPerpendicularToLaunchDirection = false;
 
 	// How much are we influencing input acceleration over time (0-1)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bInfluenceInputAcceleration", EditConditionHides))
