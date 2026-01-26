@@ -5,9 +5,11 @@
 
 #include "MControlledLaunchAsset.h"
 #include "MControlledLaunchManager.h"
+#include "MDebug.h"
 #include "MMath.h"
 #include "MMovementMode_Base.h"
 #include "MMovementMode_OrientToMovementInterface.h"
+#include "MMovementTypes.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
 
@@ -21,12 +23,21 @@ void UMCharacterMovementComponent::BeginPlay()
 
 	ControlledLaunchManager = NewObject<UMControlledLaunchManager>(this, TEXT("ControlledLaunchManager"));
 
+	// Apply initial walking type
+
+	[this]
+	{
+		if (SpeedTypeInitial == nullptr)
+		{
+			M::Debug::LogUserError(LogMMovement, TEXT("SpeedTypeInitial is not set for Movement Component"), GetOwner());
+			return;
+		}
+
+		SetWalkingSpeedType(SpeedTypeInitial);
+	}();
+
 	// Save defaults
-	DefaultValues.MaxWalkSpeed = MaxWalkSpeed;
-	DefaultValues.MaxAcceleration = GetMaxAcceleration();
-	DefaultValues.BrakingDecelerationWalking = BrakingDecelerationWalking;
 	DefaultValues.BrakingDecelerationFalling = BrakingDecelerationFalling;
-	DefaultValues.BrakingFrictionFactor = BrakingFrictionFactor;
 	DefaultValues.GravityScale = GravityScale;
 
 	ControlledLaunchManager->Initialize(this);
@@ -48,9 +59,11 @@ void UMCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tic
 
 		const FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(Acceleration);
 
-		BrakingDecelerationWalking = DefaultValues.BrakingDecelerationWalking * ControlledLaunchResult.BrakingDecelerationMultiplier;
+		const FMCharacterMovementWalkingSpeedConfig& SpeedConfig = GetCurrentWalkingSpeedConfig();
+
+		BrakingDecelerationWalking = SpeedConfig.BrakingDeceleration * ControlledLaunchResult.BrakingDecelerationMultiplier;
 		BrakingDecelerationFalling = DefaultValues.BrakingDecelerationFalling * ControlledLaunchResult.BrakingDecelerationMultiplier;
-		BrakingFrictionFactor = DefaultValues.BrakingFrictionFactor * ControlledLaunchResult.BrakingDecelerationMultiplier;
+		BrakingFrictionFactor = SpeedConfig.BrakingFrictionFactor * ControlledLaunchResult.BrakingDecelerationMultiplier;
 		GravityScale = DefaultValues.GravityScale * ControlledLaunchResult.GravityMultiplier;
 	}
 
@@ -91,7 +104,7 @@ void UMCharacterMovementComponent::AddControlledLaunchFromParams(const FVector& 
 	ControlledLaunchManager->AddControlledLaunch(LaunchVelocity, LaunchParams, Owner);
 }
 
-void UMCharacterMovementComponent::AddControlledLaunchFromAsset(const FVector& LaunchVelocity, UMControlledLaunchAsset* LaunchAsset,
+void UMCharacterMovementComponent::AddControlledLaunchFromAsset(const FVector& LaunchVelocity, const UMControlledLaunchAsset* LaunchAsset,
                                                                 UObject* Owner)
 {
 	AddControlledLaunchFromParams(LaunchVelocity, LaunchAsset->LaunchParams, Owner);
@@ -233,7 +246,7 @@ void UMCharacterMovementComponent::GrabDebugSnapshot(struct FVisualLogEntry* Sna
 			AccelerationDirectionZOffset;
 		Snapshot->AddArrow(ArrowStart + AccelerationDirectionZOffset, AccelerationDirectionArrowEnd, CmpCategoryName,
 		                   ELogVerbosity::Display,
-		                   FColor::Green.WithAlpha(0.5f), TEXT("Acceleration Direction"));
+		                   FColor::Green.WithAlpha(128), TEXT("Acceleration Direction"));
 	}
 
 	const float HorizontalSpeed = FVector2D(Velocity.X, Velocity.Y).Length();
@@ -258,6 +271,28 @@ void UMCharacterMovementComponent::GrabDebugSnapshot(struct FVisualLogEntry* Sna
 	}
 }
 #endif
+
+bool UMCharacterMovementComponent::IsMovingOnGround() const
+{
+	UMMovementMode_Base* ActiveCustomMovementMode = GetActiveCustomMovementModeInstance();
+	if (IsValid(ActiveCustomMovementMode))
+	{
+		return ActiveCustomMovementMode->IsMovingOnGround();
+	}
+
+	return Super::IsMovingOnGround();
+}
+
+bool UMCharacterMovementComponent::IsFalling() const
+{
+	return !IsMovingOnSurface();
+}
+
+float UMCharacterMovementComponent::GetMaxSpeed() const
+{
+	const FMCharacterMovementWalkingSpeedConfig WalkingSpeedConfig = GetCurrentWalkingSpeedConfig();
+	return WalkingSpeedConfig.Speed;
+}
 
 void UMCharacterMovementComponent::Reset_Implementation(bool bHardReset)
 {
@@ -307,6 +342,17 @@ void UMCharacterMovementComponent::EnsureMovementModesInitialized()
 	bMovementModesInitialized = true;
 }
 
+UPrimitiveComponent* UMCharacterMovementComponent::GetMovementBaseCustom() const
+{
+	UMMovementMode_Base* ActiveCustomMovementMode = GetActiveCustomMovementModeInstance();
+	if (IsValid(ActiveCustomMovementMode) && ActiveCustomMovementMode->IsUsingCustomMovementBase())
+	{
+		return CustomMovementBase;
+	}
+
+	return GetMovementBase();
+}
+
 bool UMCharacterMovementComponent::IsCurrentMovementModeCustom() const
 {
 	return MovementMode == MOVE_Custom;
@@ -321,6 +367,89 @@ UMMovementMode_Base* UMCharacterMovementComponent::GetActiveCustomMovementModeIn
 
 	UMMovementMode_Base* CustomMovementModeInstance = GetCustomMovementModeInstanceForEnum(CustomMovementMode);
 	return CustomMovementModeInstance;
+}
+
+void UMCharacterMovementComponent::SetWalkingSpeedType(UMCharacterMovementWalkingSpeedTypeAsset* SpeedTypeAsset)
+{
+	const bool bSettingsDefinedForAsset = SpeedConfigForSpeedTypeMap.Contains(SpeedTypeAsset);
+	if (!bSettingsDefinedForAsset)
+	{
+		M::Debug::LogUserError(LogMMovement,
+		                       FString::Format(TEXT(
+			                       "Can't set walking speed type for type {0}, because config for this speed type are not defined in Movement Component"),
+		                                       {SpeedTypeAsset->GetName()}),
+		                       GetOwner());
+		return;
+	}
+
+	SpeedTypeCurrent = SpeedTypeAsset;
+
+	const FMCharacterMovementWalkingSpeedConfig& SpeedConfig = SpeedConfigForSpeedTypeMap[SpeedTypeAsset];
+	ApplyWalkingSpeedConfig(SpeedConfig);
+}
+
+UMCharacterMovementWalkingSpeedTypeAsset* UMCharacterMovementComponent::GetCurrentWalkingSpeedType() const
+{
+	return SpeedTypeCurrent;
+}
+
+FMCharacterMovementWalkingSpeedConfig UMCharacterMovementComponent::GetCurrentWalkingSpeedConfig() const
+{
+	if (SpeedTypeCurrent == nullptr)
+	{
+		M::Debug::LogUserError(LogMMovement, TEXT("Can't get walking speed config, because walking speed type is not defined"), GetOwner());
+
+		return {};
+	}
+
+	const bool bSettingsDefinedForAsset = SpeedConfigForSpeedTypeMap.Contains(SpeedTypeCurrent);
+	if (!bSettingsDefinedForAsset)
+	{
+		M::Debug::LogUserError(LogMMovement,
+		                       FString::Format(TEXT(
+			                       "Can't get walking speed config for type {0}, because config for this speed type are not defined in Movement Component"),
+		                                       {SpeedTypeCurrent->GetName()}),
+		                       GetOwner());
+		return {};
+	}
+
+	return SpeedConfigForSpeedTypeMap[SpeedTypeCurrent];
+}
+
+FMCharacterMovementWalkingSpeedConfig UMCharacterMovementComponent::GetWalkingSpeedConfigForSpeedType(
+	UMCharacterMovementWalkingSpeedTypeAsset* SpeedTypeAsset) const
+{
+	if (SpeedTypeAsset == nullptr)
+	{
+		M::Debug::LogUserError(LogMMovement, TEXT("Can't get walking speed config for speed type, because speed type is null"),
+		                       GetOwner());
+
+		return {};
+	}
+
+	const bool bSettingsDefinedForAsset = SpeedConfigForSpeedTypeMap.Contains(SpeedTypeAsset);
+	if (!bSettingsDefinedForAsset)
+	{
+		M::Debug::LogUserError(LogMMovement,
+		                       FString::Format(TEXT(
+			                       "Can't get walking speed config for type {0}, because config for this speed type are not defined in Movement Component"),
+		                                       {SpeedTypeAsset->GetName()}), GetOwner());
+
+		return {};
+	}
+	
+	return SpeedConfigForSpeedTypeMap[SpeedTypeAsset];
+}
+
+void UMCharacterMovementComponent::SetWalkingSpeedConfig(UMCharacterMovementWalkingSpeedTypeAsset* SpeedTypeAsset,
+	const FMCharacterMovementWalkingSpeedConfig& Config)
+{
+	SpeedConfigForSpeedTypeMap.Emplace(SpeedTypeAsset, Config);
+}
+
+void UMCharacterMovementComponent::SetCustomMovementBase(UPrimitiveComponent* InCustomMovementBase)
+{
+	CustomMovementBase = InCustomMovementBase;
 }
 
 void UMCharacterMovementComponent::DrawDebugDirection(const FVector& Direction, const FColor& Color, const FString& Text) const
@@ -420,22 +549,6 @@ bool UMCharacterMovementComponent::CanCrouchInCurrentState() const
 	return Super::CanCrouchInCurrentState();
 }
 
-bool UMCharacterMovementComponent::IsMovingOnGround() const
-{
-	UMMovementMode_Base* ActiveCustomMovementMode = GetActiveCustomMovementModeInstance();
-	if (IsValid(ActiveCustomMovementMode))
-	{
-		return ActiveCustomMovementMode->IsMovingOnGround();
-	}
-
-	return Super::IsMovingOnGround();
-}
-
-bool UMCharacterMovementComponent::IsFalling() const
-{
-	return !IsMovingOnSurface();
-}
-
 bool UMCharacterMovementComponent::IsWalkable(const FHitResult& Hit) const
 {
 	if (IsValid(ControlledLaunchManager) && ControlledLaunchManager->IsWalkBlockedByControlledLaunch())
@@ -446,27 +559,15 @@ bool UMCharacterMovementComponent::IsWalkable(const FHitResult& Hit) const
 
 FVector UMCharacterMovementComponent::ScaleInputAcceleration(const FVector& InputAcceleration) const
 {
-	const FVector InputAccelerationScaled = Super::ScaleInputAcceleration(InputAcceleration);
+	FVector Result = Super::ScaleInputAcceleration(InputAcceleration);
 
-	FVector Result = InputAccelerationScaled;
 	if (IsValid(ControlledLaunchManager))
 	{
-		const FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(InputAccelerationScaled);
+		const FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(Result);
 		Result = ControlledLaunchResult.Acceleration;
 	}
 
 	return Result;
-}
-
-UPrimitiveComponent* UMCharacterMovementComponent::GetMovementBaseCustom() const
-{
-	UMMovementMode_Base* ActiveCustomMovementMode = GetActiveCustomMovementModeInstance();
-	if (IsValid(ActiveCustomMovementMode) && ActiveCustomMovementMode->IsUsingCustomMovementBase())
-	{
-		return CustomMovementBase;
-	}
-
-	return GetMovementBase();
 }
 
 void UMCharacterMovementComponent::UpdateTemporalHorizontalVelocityEntry()
@@ -474,11 +575,6 @@ void UMCharacterMovementComponent::UpdateTemporalHorizontalVelocityEntry()
 	TemporalHorizontalVelocityArray.Emplace(GetHorizontalVelocity());
 	if (TemporalHorizontalVelocityArray.Num() > TemporalPeakHorizontalVelocityHistoryFramesAmount)
 		TemporalHorizontalVelocityArray.RemoveAt(0);
-}
-
-void UMCharacterMovementComponent::SetCustomMovementBase(UPrimitiveComponent* InCustomMovementBase)
-{
-	CustomMovementBase = InCustomMovementBase;
 }
 
 UMMovementMode_Base* UMCharacterMovementComponent::GetCustomMovementModeInstanceForEnum(uint8 EnumValue) const
@@ -497,4 +593,15 @@ FRotator UMCharacterMovementComponent::ComputeCharacterOrientation(const FRotato
                                                                    FRotator& DeltaRotation) const
 {
 	return Super::ComputeOrientToMovementRotation(CurrentRotation, DeltaTime, DeltaRotation);
+}
+
+void UMCharacterMovementComponent::ApplyWalkingSpeedConfig(const FMCharacterMovementWalkingSpeedConfig& Config)
+{
+	MaxWalkSpeed = Config.Speed;
+	MaxAcceleration = Config.Acceleration;
+	BrakingDecelerationWalking = Config.BrakingDeceleration;
+	GroundFriction = Config.GroundFriction;
+	bUseSeparateBrakingFriction = Config.bUseSeparateBrakingFriction;
+	BrakingFrictionFactor = Config.BrakingFrictionFactor;
+	BrakingFriction = Config.BrakingFriction;
 }

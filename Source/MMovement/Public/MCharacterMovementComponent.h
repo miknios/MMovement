@@ -3,11 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MCharacterMovementWalkingSpeed.h"
 #include "MResettable.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "VisualLogger/VisualLoggerDebugSnapshotInterface.h"
 #include "MCharacterMovementComponent.generated.h"
 
+class UMCharacterMovementWalkingSpeedTypeAsset;
 class UMControlledLaunchManager;
 class UMControlledLaunchAsset;
 struct FMControlledLaunchParams;
@@ -20,19 +22,7 @@ struct FMCharacterMovementComponent_DefaultValues
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleInstanceOnly)
-	float MaxWalkSpeed = 0;
-
-	UPROPERTY(VisibleInstanceOnly)
-	float MaxAcceleration = 0;
-
-	UPROPERTY(VisibleInstanceOnly)
-	float BrakingDecelerationWalking = 0;
-
-	UPROPERTY(VisibleInstanceOnly)
 	float BrakingDecelerationFalling = 0;
-
-	UPROPERTY(VisibleInstanceOnly)
-	float BrakingFrictionFactor = 0;
 
 	UPROPERTY(VisibleInstanceOnly)
 	float GravityScale = 0;
@@ -59,12 +49,14 @@ public:
 	// ~ UActorComponent
 
 	// ~ UCharacterMovementComponent
-	virtual FRotator ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime, FRotator& DeltaRotation) const override;
+	virtual FRotator
+	ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime, FRotator& DeltaRotation) const override;
 	virtual void HandleImpact(const FHitResult& Hit, float TimeSlice, const FVector& MoveDelta) override;
 	virtual float SlideAlongSurface(const FVector& Delta, float Time, const FVector& Normal, FHitResult& Hit, bool bHandleImpact) override;
 	virtual bool CanAttemptJump() const override;
 	virtual bool IsMovingOnGround() const override;
 	virtual bool IsFalling() const override;
+	virtual float GetMaxSpeed() const override;
 	// ~ UCharacterMovementComponent
 
 	// IVisualLoggerDebugSnapshotInterface
@@ -88,7 +80,7 @@ public:
 	                                   UObject* Owner = nullptr);
 
 	UFUNCTION(BlueprintCallable)
-	void AddControlledLaunchFromAsset(const FVector& LaunchVelocity, UMControlledLaunchAsset* LaunchAsset, UObject* Owner = nullptr);
+	void AddControlledLaunchFromAsset(const FVector& LaunchVelocity, const UMControlledLaunchAsset* LaunchAsset, UObject* Owner = nullptr);
 
 	UFUNCTION(BlueprintCallable)
 	UMMovementMode_Base* GetCustomMovementModeInstance(TSubclassOf<UMMovementMode_Base> MovementModeClass) const;
@@ -129,9 +121,25 @@ public:
 	UFUNCTION(BlueprintCallable)
 	UMMovementMode_Base* GetActiveCustomMovementModeInstance() const;
 
+	UFUNCTION(BlueprintCallable)
+	void SetWalkingSpeedType(UMCharacterMovementWalkingSpeedTypeAsset* SpeedTypeAsset);
+
+	UFUNCTION(BlueprintCallable)
+	UMCharacterMovementWalkingSpeedTypeAsset* GetCurrentWalkingSpeedType() const;
+
+	UFUNCTION(BlueprintCallable)
+	FMCharacterMovementWalkingSpeedConfig GetCurrentWalkingSpeedConfig() const;
+
+	UFUNCTION(BlueprintCallable)
+	FMCharacterMovementWalkingSpeedConfig GetWalkingSpeedConfigForSpeedType(UMCharacterMovementWalkingSpeedTypeAsset* SpeedTypeAsset) const;
+
+	UFUNCTION(BlueprintCallable)
+	void SetWalkingSpeedConfig(UMCharacterMovementWalkingSpeedTypeAsset* SpeedTypeAsset,
+	                           const FMCharacterMovementWalkingSpeedConfig& Config);
+
 	void SetAcceleration(const FVector& AccelerationNew) { Acceleration = AccelerationNew; }
 	void SetCustomMovementBase(UPrimitiveComponent* InCustomMovementBase);
-	
+
 	void DrawDebugDirection(const FVector& Direction, const FColor& Color, const FString& Text = FString()) const;
 	void DrawDebugCharacterCapsule(const FColor& Color, const float Duration = -1, const FString& Text = FString()) const;
 
@@ -158,7 +166,15 @@ protected:
 	 */
 	virtual FRotator ComputeCharacterOrientation(const FRotator& CurrentRotation, float DeltaTime, FRotator& DeltaRotation) const;
 
+	void ApplyWalkingSpeedConfig(const FMCharacterMovementWalkingSpeedConfig& Config);
+
 protected:
+	UPROPERTY(EditAnywhere, Category = "Movement|Speed")
+	TObjectPtr<UMCharacterMovementWalkingSpeedTypeAsset> SpeedTypeInitial;
+
+	UPROPERTY(EditAnywhere, Category = "Movement|Speed")
+	TMap<TObjectPtr<UMCharacterMovementWalkingSpeedTypeAsset>, FMCharacterMovementWalkingSpeedConfig> SpeedConfigForSpeedTypeMap;
+
 	UPROPERTY(EditAnywhere, Category = "Movement|Movement Modes")
 	TArray<TSubclassOf<UMMovementMode_Base>> AvailableMovementModes;
 
@@ -171,6 +187,9 @@ protected:
 
 	UPROPERTY(Transient, VisibleAnywhere, Category = "Movement|Controlled Launch")
 	TObjectPtr<UMControlledLaunchManager> ControlledLaunchManager;
+
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = "Movement|Speed")
+	TObjectPtr<UMCharacterMovementWalkingSpeedTypeAsset> SpeedTypeCurrent;
 
 	UPROPERTY(Transient, VisibleInstanceOnly, Category = "Movement")
 	FMCharacterMovementComponent_DefaultValues DefaultValues;

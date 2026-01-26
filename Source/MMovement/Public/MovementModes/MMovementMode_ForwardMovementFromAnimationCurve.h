@@ -69,8 +69,8 @@ public:
 	// ~ UMMovementMode_Base
 
 	// ~ IMMovementMode_OrientToMovementInterface
-	FRotator ComputeOrientToMovementRotation_Implementation(const FRotator& CurrentRotation, float DeltaTime,
-	                                                        FRotator& DeltaRotation) override;
+	virtual FRotator ComputeOrientToMovementRotation_Implementation(const FRotator& CurrentRotation, float DeltaTime,
+	                                                                FRotator& DeltaRotation) override;
 	// ~ IMMovementMode_OrientToMovementInterface
 
 	UFUNCTION(BlueprintCallable)
