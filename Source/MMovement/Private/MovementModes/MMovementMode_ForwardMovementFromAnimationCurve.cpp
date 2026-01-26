@@ -13,8 +13,10 @@ void UMAnimNotifyState_ForwardMovementMode::NotifyBegin(USkeletalMeshComponent* 
 
 	bool bOverrideWalk = true;
 
+	const UWorld* World = MeshComp->GetWorld();
+
 #if WITH_EDITOR
-	bOverrideWalk = GEditor->IsPlaySessionInProgress();
+	bOverrideWalk = IsValid(World) && World->IsGameWorld();
 #endif
 
 	if (!bOverrideWalk)
@@ -46,8 +48,10 @@ void UMAnimNotifyState_ForwardMovementMode::NotifyEnd(USkeletalMeshComponent* Me
 
 	bool bOverrideWalk = true;
 
+	const UWorld* World = MeshComp->GetWorld();
+
 #if WITH_EDITOR
-	bOverrideWalk = GEditor->IsPlaySessionInProgress();
+	bOverrideWalk = IsValid(World) && World->IsGameWorld();
 #endif
 
 	if (!bOverrideWalk)
@@ -114,7 +118,7 @@ void UMMovementMode_ForwardMovementFromAnimationCurve::Start_Implementation()
 
 	AnimInstance = Mesh->GetAnimInstance();
 	if (!ensure(IsValid(AnimInstance)))
-	{
+	{ 
 		RuntimeData.bWantsToFinish = true;
 		return;
 	}
@@ -148,11 +152,7 @@ void UMMovementMode_ForwardMovementFromAnimationCurve::Phys_Implementation(float
 
 	if (RuntimeData.bNeedsToCalculateOrientToMovementRotation)
 	{
-		const FVector InputVector = MovementComponent->GetMovementInputVectorLast();
-		RuntimeData.OrientToMovementRotation = InputVector.IsNearlyZero()
-			                                       ? CharacterOwner->GetActorRotation()
-			                                       : InputVector.Rotation();
-
+		RuntimeData.OrientToMovementRotation = UpdatedComponent->GetComponentRotation();
 		RuntimeData.bNeedsToCalculateOrientToMovementRotation = false;
 	}
 
