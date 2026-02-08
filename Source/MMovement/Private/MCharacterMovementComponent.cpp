@@ -321,6 +321,11 @@ void UMCharacterMovementComponent::EnsureMovementModesInitialized()
 {
 	// Fix for crash when this is called from Animation Blueprint outside of PIE
 #if WITH_EDITOR
+	if (!IsValid(GEditor))
+	{
+		return;
+	}
+	
 	if (!GEditor->IsPlayingSessionInEditor())
 	{
 		return;
