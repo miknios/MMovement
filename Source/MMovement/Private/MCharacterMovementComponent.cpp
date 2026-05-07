@@ -58,7 +58,6 @@ void UMCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick Tic
 		ControlledLaunchManager->TickLaunches(DeltaTime);
 
 		const FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(Acceleration);
-
 		const FMCharacterMovementWalkingSpeedConfig& SpeedConfig = GetCurrentWalkingSpeedConfig();
 
 		BrakingDecelerationWalking = SpeedConfig.BrakingDeceleration * ControlledLaunchResult.BrakingDecelerationMultiplier;
@@ -155,6 +154,11 @@ bool UMCharacterMovementComponent::IsMovingOnSurface() const
 		UMMovementMode_Base* ActiveCustomMovementModeInstance = GetActiveCustomMovementModeInstance();
 		if (IsValid(ActiveCustomMovementModeInstance))
 		{
+			if (ActiveCustomMovementModeInstance->IsMovingOnGround())
+			{
+				return true;
+			}
+
 			return ActiveCustomMovementModeInstance->IsMovingOnSurface();
 		}
 	}
@@ -195,11 +199,12 @@ bool UMCharacterMovementComponent::CanAttemptJump() const
 #if ENABLE_VISUAL_LOG
 void UMCharacterMovementComponent::GrabDebugSnapshot(struct FVisualLogEntry* Snapshot) const
 {
-	FVisualLogStatusCategory& CmpCategory = Snapshot->Status.Last();
-	FName CmpCategoryName = FName(*CmpCategory.Category);
+	FVisualLogStatusCategory& CmpCategory = Snapshot->Status.AddZeroed_GetRef();
+	CmpCategory.Category = TEXT("M Character Movement Component");
+	const FName CmpCategoryName = FName(*CmpCategory.Category);
 
 	// Draw Character Capsule
-	auto CapsuleComponent = CharacterOwner->GetCapsuleComponent();
+	const UCapsuleComponent* CapsuleComponent = CharacterOwner->GetCapsuleComponent();
 	const FVector CapsuleBase = CapsuleComponent->GetComponentLocation()
 		- FVector::UpVector * CapsuleComponent->GetScaledCapsuleHalfHeight();
 	const float CapsuleHalfHeight = CapsuleComponent->GetScaledCapsuleHalfHeight();
@@ -294,6 +299,26 @@ float UMCharacterMovementComponent::GetMaxSpeed() const
 	return WalkingSpeedConfig.Speed;
 }
 
+void UMCharacterMovementComponent::MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult)
+{
+	Super::MoveAlongFloor(InVelocity, DeltaSeconds, OutStepDownResult);
+}
+
+void UMCharacterMovementComponent::MaintainHorizontalGroundVelocity()
+{
+	Super::MaintainHorizontalGroundVelocity();
+}
+
+void UMCharacterMovementComponent::ApplyRootMotionToVelocity(float deltaTime)
+{
+	Super::ApplyRootMotionToVelocity(deltaTime);
+}
+
+void UMCharacterMovementComponent::RestorePreAdditiveRootMotionVelocity()
+{
+	Super::RestorePreAdditiveRootMotionVelocity();
+}
+
 void UMCharacterMovementComponent::Reset_Implementation(bool bHardReset)
 {
 	SetMovementMode(MOVE_Falling);
@@ -325,7 +350,7 @@ void UMCharacterMovementComponent::EnsureMovementModesInitialized()
 	{
 		return;
 	}
-	
+
 	if (!GEditor->IsPlayingSessionInEditor())
 	{
 		return;
@@ -442,12 +467,12 @@ FMCharacterMovementWalkingSpeedConfig UMCharacterMovementComponent::GetWalkingSp
 
 		return {};
 	}
-	
+
 	return SpeedConfigForSpeedTypeMap[SpeedTypeAsset];
 }
 
 void UMCharacterMovementComponent::SetWalkingSpeedConfig(UMCharacterMovementWalkingSpeedTypeAsset* SpeedTypeAsset,
-	const FMCharacterMovementWalkingSpeedConfig& Config)
+                                                         const FMCharacterMovementWalkingSpeedConfig& Config)
 {
 	SpeedConfigForSpeedTypeMap.Emplace(SpeedTypeAsset, Config);
 }
@@ -569,7 +594,7 @@ FVector UMCharacterMovementComponent::ScaleInputAcceleration(const FVector& Inpu
 	if (IsValid(ControlledLaunchManager))
 	{
 		const FMControlledLaunchManager_ProcessResult ControlledLaunchResult = ControlledLaunchManager->Process(Result);
-		Result = ControlledLaunchResult.Acceleration;
+		Result = ControlledLaunchResult.InputAcceleration;
 	}
 
 	return Result;

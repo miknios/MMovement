@@ -8,9 +8,6 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "MMovementMath.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class MMOVEMENT_API UMMovementMath : public UBlueprintFunctionLibrary
 {

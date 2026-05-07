@@ -16,9 +16,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FMOnMovementModeEndSignature);
 
 enum EMCustomMovementMode : uint8;
 class UMCharacterMovementComponent;
-/**
- * 
- */
+
+// TODO: refactor functions to const
 UCLASS(Blueprintable, BlueprintType)
 class MMOVEMENT_API UMMovementMode_Base : public UObject,
                                           public IVisualLoggerDebugSnapshotInterface,

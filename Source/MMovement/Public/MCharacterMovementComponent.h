@@ -57,6 +57,10 @@ public:
 	virtual bool IsMovingOnGround() const override;
 	virtual bool IsFalling() const override;
 	virtual float GetMaxSpeed() const override;
+	virtual void MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult = 0) override;
+	virtual void MaintainHorizontalGroundVelocity() override;
+	virtual void ApplyRootMotionToVelocity(float deltaTime) override;
+	virtual void RestorePreAdditiveRootMotionVelocity() override;
 	// ~ UCharacterMovementComponent
 
 	// IVisualLoggerDebugSnapshotInterface
