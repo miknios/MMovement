@@ -10,6 +10,11 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
 
+namespace WallRun_Private
+{
+	const FName WallRunnableTagName = TEXT("WR");
+}
+
 UMMovementMode_WallRun::UMMovementMode_WallRun()
 {
 	MovementModeName = TEXT("Wall Run");
@@ -469,7 +474,7 @@ bool UMMovementMode_WallRun::IsHighEnoughFromGround() const
 	if (bGroundHit)
 	{
 		// TODO: check for tags in config instead of hardcoded value
-		if (!GroundTraceHitResult.GetComponent()->ComponentHasTag(WallRunnableTagName))
+		if (!GroundTraceHitResult.GetComponent()->ComponentHasTag(WallRun_Private::WallRunnableTagName))
 			return false;
 	}
 
