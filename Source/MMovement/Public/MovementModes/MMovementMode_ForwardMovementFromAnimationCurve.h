@@ -48,6 +48,9 @@ struct FMMovementMode_ForwardMovementFromAnimationCurve_RuntimeData
 
 	UPROPERTY(VisibleInstanceOnly)
 	FRotator OrientToMovementRotation = FRotator::ZeroRotator;
+
+	UPROPERTY(VisibleInstanceOnly)
+	bool bMovingOnSurface = false;
 };
 
 UCLASS()
@@ -80,9 +83,20 @@ public:
 	void FinishAnimationMovement();
 
 protected:
+	// UMMovementMode_Base
+#if ENABLE_VISUAL_LOG
+	virtual void AddVisualLoggerInfo(FVisualLogEntry* Snapshot, FVisualLogStatusCategory& MovementCmpCategory,
+	                                 FVisualLogStatusCategory& MovementModeCategory) const override;
+#endif
+	// ~ UMMovementMode_Base
+
 	UPROPERTY(Transient, EditAnywhere, Category = "Forward Movement From Animation Curve Data", meta = (ShowOnlyInnerProperties))
 	FMMovementMode_ForwardMovementFromAnimationCurve_RuntimeData RuntimeData;
 
 	UPROPERTY(Transient)
 	UAnimInstance* AnimInstance;
+
+	// How fast we snap to the ground when going downward on a sloped surface
+	UPROPERTY(EditAnywhere, Category = "Forward Movement From Animation Curve")
+	float SurfaceSnapSpeed = 4.f;
 };
