@@ -9,6 +9,7 @@
 #include "UObject/Object.h"
 #include "MControlledLaunchManager.generated.h"
 
+class UMMultisourceLockableBool;
 class UMCharacterMovementComponent;
 
 USTRUCT()
@@ -17,10 +18,10 @@ struct FMControlledLaunchManager_ProcessResult
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere)
-	float AccelerationMultiplier = 1;
+	float InputAccelerationMultiplier = 1;
 
 	UPROPERTY(VisibleAnywhere)
-	FVector Acceleration = FVector::ZeroVector;
+	FVector InputAcceleration = FVector::ZeroVector;
 
 	UPROPERTY(VisibleAnywhere)
 	float BrakingDecelerationMultiplier = 1;
@@ -28,14 +29,10 @@ struct FMControlledLaunchManager_ProcessResult
 	UPROPERTY(VisibleAnywhere)
 	float GravityMultiplier = 1;
 
-
 	FMControlledLaunchManager_ProcessResult() = default;
 
-	FMControlledLaunchManager_ProcessResult(const FVector& Acceleration)
-		: AccelerationMultiplier(1),
-		  Acceleration(Acceleration),
-		  BrakingDecelerationMultiplier(1),
-		  GravityMultiplier(1)
+	explicit FMControlledLaunchManager_ProcessResult(const FVector& Acceleration)
+		: InputAcceleration(Acceleration)
 	{
 	}
 };
@@ -91,12 +88,21 @@ public:
 	bool IsWalkBlockedByControlledLaunch() const;
 	
 	UFUNCTION(BlueprintCallable)
+	bool IsLaunchImmunityActive() const;
+	
+	UFUNCTION(BlueprintCallable)
+	void AddLaunchImmunitySource(const UObject* Source);
+	
+	UFUNCTION(BlueprintCallable)
+	void RemoveLaunchImmunitySource(const UObject* Source);
+
+	UFUNCTION(BlueprintCallable)
 	void ClearAllLaunches();
 
 	void Initialize(UMCharacterMovementComponent* InOwnerMovementComponent);
 	void TickLaunches(float DeltaTime);
 	void AddControlledLaunch(const FVector& LaunchVelocity, const FMControlledLaunchParams& LaunchParams, UObject* Owner);
-	FMControlledLaunchManager_ProcessResult Process(const FVector& AccelerationCurrent) const;
+	FMControlledLaunchManager_ProcessResult Process(const FVector& InputAcceleration) const;
 
 	// Takes a function to execute for each active controlled launch instance
 	// Return true if you want to continue iterating
@@ -109,10 +115,13 @@ public:
 protected:
 	void TickLaunchInstance(FMControlledLaunchManager_LaunchInstance& LaunchInstance, float DeltaTime);
 	bool ShouldRemoveLaunchInstance(const FMControlledLaunchManager_LaunchInstance& LaunchInstance) const;
+	bool ShouldAddLaunchInstance(const UObject* LaunchOwner);
 
-protected:
 	UPROPERTY(EditDefaultsOnly)
 	float ControlledLaunchSpeedThreshold = 300;
+	
+	UPROPERTY(VisibleInstanceOnly)
+	TObjectPtr<UMMultisourceLockableBool> LaunchImmunityLockableBool;
 
 	UPROPERTY()
 	UMCharacterMovementComponent* OwnerMovementComponent;
