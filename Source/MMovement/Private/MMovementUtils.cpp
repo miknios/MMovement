@@ -5,6 +5,24 @@
 #include "MCharacterMovementComponent.h"
 #include "GameFramework/Character.h"
 
+namespace MMovementUtils_Private
+{
+	bool ShouldStopMovementGenericPhysics(const ACharacter* CharacterOwner, const UMCharacterMovementComponent* MoveComp)
+	{
+		return !CharacterOwner ||
+		(!CharacterOwner->GetController() &&
+			!MoveComp->bRunPhysicsWithNoController &&
+			!MoveComp->HasAnimRootMotion() &&
+			!MoveComp->CurrentRootMotion.HasOverrideVelocity() &&
+			CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy);
+	}
+
+	bool CheckMovementModeChanged(const UMCharacterMovementComponent* MoveComp, EMovementMode StartingMode, uint8 StartingCustomMode)
+	{
+		return MoveComp->MovementMode != StartingMode || MoveComp->CustomMovementMode != StartingCustomMode;
+	}
+}
+
 namespace MMovementUtils
 {
 	FWalkingPhysicsParams FWalkingPhysicsParams::FromMovementComponent(const UMCharacterMovementComponent* MoveComp)
@@ -35,25 +53,30 @@ namespace MMovementUtils
 		}
 
 		FVector& Velocity = MoveComp->Velocity;
-		const FVector InputAcceleration = MoveComp->GetCurrentAcceleration();
 
-		const float MaxSpeed = Params.MaxWalkSpeed;
+		const FVector InputAcceleration = MoveComp->GetCurrentAcceleration();
+		const bool bZeroAcceleration = InputAcceleration.IsNearlyZero();
+
+		const float AnalogInputModifier = InputAcceleration.Size() / MoveComp->GetMaxAcceleration();
+
+		const float MaxSpeed = bZeroAcceleration
+			                       ? Params.MaxWalkSpeed
+			                       : Params.MaxWalkSpeed * AnalogInputModifier;
+		
 		const float GroundFriction = Params.GroundFriction;
 		const float BrakingDeceleration = Params.BrakingDeceleration;
 
-		const bool bZeroAcceleration = InputAcceleration.IsNearlyZero();
-
-		// Rescale acceleration to use Params.MaxAcceleration
-		FVector Acceleration = InputAcceleration;
-		if (!bZeroAcceleration)
-		{
-			Acceleration = InputAcceleration.GetSafeNormal() * Params.MaxAcceleration;
-		}
+		// Rescale acceleration to use Params.MaxAcceleration and scale by analog input magnitude
+		// so that partial stick input results in proportionally smaller acceleration.
+		const FVector Acceleration = bZeroAcceleration
+			                             ? FVector::ZeroVector
+			                             : InputAcceleration.GetSafeNormal() * Params.MaxAcceleration * AnalogInputModifier;
 
 		// Apply friction
 		if (bZeroAcceleration || bFluid)
 		{
-			const float ActualBrakingFriction = (Params.bUseSeparateBrakingFriction ? Params.BrakingFriction : GroundFriction) * Params.BrakingFrictionFactor;
+			const float ActualBrakingFriction = (Params.bUseSeparateBrakingFriction ? Params.BrakingFriction : GroundFriction) * Params.
+				BrakingFrictionFactor;
 			const float FrictionDamping = FMath::Max(0.f, ActualBrakingFriction * DeltaTime);
 			Velocity -= Velocity * FMath::Min(FrictionDamping, 1.f);
 		}
@@ -130,6 +153,29 @@ namespace MMovementUtils
 			}
 		}
 
+		// If current speed is above the (possibly reduced) MaxSpeed due to analog input change,
+		// apply braking to bring the character down toward MaxSpeed instead of leaving it stuck above.
+		// This handles the case when player reduces stick from full to partial and expects slowdown.
+		if (!Velocity.IsNearlyZero())
+		{
+			const float VelSizeAfter = Velocity.Size();
+			if (VelSizeAfter > MaxSpeed)
+			{
+				const float ExcessSpeed = VelSizeAfter - MaxSpeed;
+				const float DecelThisFrame = FMath::Max(0.f, BrakingDeceleration) * DeltaTime;
+				const float ReduceBy = FMath::Min(ExcessSpeed, DecelThisFrame);
+				if (ReduceBy > 0.f)
+				{
+					Velocity -= Velocity.GetSafeNormal() * ReduceBy;
+				}
+				else
+				{
+					// If no braking deceleration available, clamp to max to avoid stuck overspeed.
+					Velocity = Velocity.GetSafeNormal() * MaxSpeed;
+				}
+			}
+		}
+
 		if (bFluid)
 		{
 			Velocity = Velocity * (1.f - FMath::Min(GroundFriction * DeltaTime, 1.f));
@@ -151,17 +197,8 @@ namespace MMovementUtils
 		}
 
 		ACharacter* CharacterOwner = MoveComp->GetCharacterOwner();
-		auto ShouldStopPhysics = [&]
-		{
-			return !CharacterOwner ||
-				(!CharacterOwner->GetController() &&
-					!MoveComp->bRunPhysicsWithNoController &&
-					!MoveComp->HasAnimRootMotion() &&
-					!MoveComp->CurrentRootMotion.HasOverrideVelocity() &&
-					CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy);
-		};
 
-		if (ShouldStopPhysics())
+		if (MMovementUtils_Private::ShouldStopMovementGenericPhysics(CharacterOwner, MoveComp))
 		{
 			MoveComp->SetAcceleration(FVector::ZeroVector);
 			MoveComp->Velocity = FVector::ZeroVector;
@@ -183,14 +220,9 @@ namespace MMovementUtils
 		const EMovementMode StartingMode = MoveComp->MovementMode;
 		const uint8 StartingCustomMode = MoveComp->CustomMovementMode;
 
-		auto CheckMovementModeChanged = [&]()
-		{
-			return MoveComp->MovementMode != StartingMode || MoveComp->CustomMovementMode != StartingCustomMode;
-		};
-
 		while (RemainingTime >= UCharacterMovementComponent::MIN_TICK_TIME &&
 			Iterations < MoveComp->MaxSimulationIterations &&
-			!ShouldStopPhysics())
+			!MMovementUtils_Private::ShouldStopMovementGenericPhysics(CharacterOwner, MoveComp))
 		{
 			Iterations++;
 
@@ -213,7 +245,7 @@ namespace MMovementUtils
 
 			MoveComp->ApplyRootMotionToVelocity(TimeTick);
 
-			if (CheckMovementModeChanged())
+			if (MMovementUtils_Private::CheckMovementModeChanged(MoveComp, StartingMode, StartingCustomMode))
 			{
 				Out.Result = EGenericWalkResult::ChangedMovementMode;
 				break;
@@ -234,7 +266,7 @@ namespace MMovementUtils
 					break;
 				}
 
-				if (CheckMovementModeChanged())
+				if (MMovementUtils_Private::CheckMovementModeChanged(MoveComp, StartingMode, StartingCustomMode))
 				{
 					Out.Result = EGenericWalkResult::ChangedMovementMode;
 					break;
@@ -272,11 +304,13 @@ namespace MMovementUtils
 					continue;
 				}
 
-				bool bMustFall = (OldBase == nullptr) || (!OldBase->IsQueryCollisionEnabled() && MovementBaseUtility::IsDynamicBase(OldBase));
+				bool bMustFall = (OldBase == nullptr) || (!OldBase->IsQueryCollisionEnabled() &&
+					MovementBaseUtility::IsDynamicBase(OldBase));
 
 				if (bMustFall || !bCheckedFall)
 				{
-					if (MoveComp->CheckFall(OldFloor, MoveComp->CurrentFloor.HitResult, Delta, OldLocation, RemainingTime, TimeTick, Iterations, bMustFall))
+					if (MoveComp->CheckFall(OldFloor, MoveComp->CurrentFloor.HitResult, Delta, OldLocation, RemainingTime, TimeTick,
+					                        Iterations, bMustFall))
 					{
 						Out.Result = EGenericWalkResult::NeedsFalling;
 						break;
@@ -311,10 +345,12 @@ namespace MMovementUtils
 
 			if (!MoveComp->CurrentFloor.IsWalkableFloor() && !MoveComp->CurrentFloor.HitResult.bStartPenetrating)
 			{
-				bool bMustFall = MoveComp->bJustTeleported || !OldBase || (!OldBase->IsQueryCollisionEnabled() && MovementBaseUtility::IsDynamicBase(OldBase));
+				bool bMustFall = MoveComp->bJustTeleported || !OldBase || (!OldBase->IsQueryCollisionEnabled() &&
+					MovementBaseUtility::IsDynamicBase(OldBase));
 
 				if ((bMustFall || !bCheckedFall) &&
-					MoveComp->CheckFall(OldFloor, MoveComp->CurrentFloor.HitResult, Delta, OldLocation, RemainingTime, TimeTick, Iterations, bMustFall))
+					MoveComp->CheckFall(OldFloor, MoveComp->CurrentFloor.HitResult, Delta, OldLocation, RemainingTime, TimeTick, Iterations,
+					                    bMustFall))
 				{
 					Out.Result = EGenericWalkResult::NeedsFalling;
 					break;
@@ -322,14 +358,17 @@ namespace MMovementUtils
 				bCheckedFall = true;
 			}
 
-			if (MoveComp->IsMovingOnGround())
-			{
-				if (TimeTick >= UCharacterMovementComponent::MIN_TICK_TIME)
-				{
-					MoveComp->Velocity = (MoveComp->UpdatedComponent->GetComponentLocation() - OldLocation) / TimeTick;
-					MoveComp->MaintainHorizontalGroundVelocity();
-				}
-			}
+			// TODO: I commented this out because it caused stutters on movement mode change
+			//		Not sure why it's needed since we set the velocity before, 
+			//		but I'm leaving this here in case I encounter some other bug that might be related to this change
+			// if (MoveComp->IsMovingOnGround())
+			// {
+			// 	if (TimeTick >= UCharacterMovementComponent::MIN_TICK_TIME)
+			// 	{
+			// 		MoveComp->Velocity = (MoveComp->UpdatedComponent->GetComponentLocation() - OldLocation) / TimeTick;
+			// 		MoveComp->MaintainHorizontalGroundVelocity();
+			// 	}
+			// }
 
 			if (MoveComp->UpdatedComponent->GetComponentLocation() == OldLocation)
 			{
