@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CollisionQueryParams.h"
 #include "MManualTimer.h"
 #include "MMovementMode_Base.h"
 #include "MMovementMode_WallRun.generated.h"
@@ -101,7 +102,7 @@ struct MMOVEMENT_API FMCharacterMovement_WallRunConfig
 	bool bGravityEnabled = true;
 
 	UPROPERTY(EditAnywhere, Category = "Wall Run Config|Gravity", meta = (EditCondition = "bGravityEnabled", EditConditionHides))
-	float Gravity = 9.81;
+	float Gravity = 9.81f;
 
 	UPROPERTY(EditAnywhere, Category = "Wall Run Config|Gravity", meta = (EditCondition = "bGravityEnabled", EditConditionHides))
 	float GravityApexTime = 2;

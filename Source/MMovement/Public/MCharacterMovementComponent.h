@@ -49,17 +49,20 @@ public:
 	// ~ UActorComponent
 
 	// ~ UCharacterMovementComponent
-	virtual FRotator
-	ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime, FRotator& DeltaRotation) const override;
-	virtual void HandleImpact(const FHitResult& Hit, float TimeSlice, const FVector& MoveDelta) override;
-	virtual float SlideAlongSurface(const FVector& Delta, float Time, const FVector& Normal, FHitResult& Hit, bool bHandleImpact) override;
+	virtual FRotator ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime, FRotator& DeltaRotation) const override;
 	virtual bool CanAttemptJump() const override;
 	virtual bool IsMovingOnGround() const override;
 	virtual bool IsFalling() const override;
 	virtual float GetMaxSpeed() const override;
+	virtual bool CanCrouchInCurrentState() const override;
+	virtual bool IsWalkable(const FHitResult& Hit) const override;
+	
+	/// These functions are overriden and their visibility is changed to public deliberately so custom movement modes can call them
+	virtual void HandleImpact(const FHitResult& Hit, float TimeSlice, const FVector& MoveDelta) override;
+	virtual float SlideAlongSurface(const FVector& Delta, float Time, const FVector& Normal, FHitResult& Hit, bool bHandleImpact) override;
 	virtual void MoveAlongFloor(const FVector& InVelocity, float DeltaSeconds, FStepDownResult* OutStepDownResult = 0) override;
 	virtual void MaintainHorizontalGroundVelocity() override;
-	virtual void ApplyRootMotionToVelocity(float deltaTime) override;
+	virtual void ApplyRootMotionToVelocity(float DeltaTime) override;
 	virtual void RestorePreAdditiveRootMotionVelocity() override;
 	// ~ UCharacterMovementComponent
 
@@ -75,9 +78,6 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void EnsureMovementModesInitialized();
-
-	UFUNCTION(BlueprintCallable)
-	UPrimitiveComponent* GetMovementBaseCustom() const;
 
 	UFUNCTION(BlueprintCallable)
 	void AddControlledLaunchFromParams(const FVector& LaunchVelocity, const FMControlledLaunchParams& LaunchParams,
@@ -142,7 +142,6 @@ public:
 	                           const FMCharacterMovementWalkingSpeedConfig& Config);
 
 	void SetAcceleration(const FVector& AccelerationNew) { Acceleration = AccelerationNew; }
-	void SetCustomMovementBase(UPrimitiveComponent* InCustomMovementBase);
 
 	void DrawDebugDirection(const FVector& Direction, const FColor& Color, const FString& Text = FString()) const;
 	void DrawDebugCharacterCapsule(const FColor& Color, const float Duration = -1, const FString& Text = FString()) const;
@@ -155,9 +154,7 @@ protected:
 	// ~ UCharacterMovementComponent
 	virtual void OnMovementUpdated(float DeltaSeconds, const FVector& OldLocation, const FVector& OldVelocity) override;
 	virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
-	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
-	virtual bool CanCrouchInCurrentState() const override;
-	virtual bool IsWalkable(const FHitResult& Hit) const override;
+	virtual void PhysCustom(float DeltaTime, int32 Iterations) override;
 	virtual FVector ScaleInputAcceleration(const FVector& InputAcceleration) const override;
 	// ~ UCharacterMovementComponent
 
@@ -200,9 +197,6 @@ protected:
 
 	UPROPERTY(Transient, VisibleAnywhere, Category = "Movement")
 	TArray<FVector> TemporalHorizontalVelocityArray;
-
-	UPROPERTY(Transient, VisibleInstanceOnly, Category = "Movement")
-	UPrimitiveComponent* CustomMovementBase;
 
 	// Last movement direction input vector
 	UPROPERTY(Transient, VisibleInstanceOnly, Category = "Movement")

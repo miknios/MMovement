@@ -3,6 +3,8 @@
 
 #include "MCharacterMovementComponent.h"
 
+#include "DrawDebugHelpers.h"
+#include "Editor.h"
 #include "MControlledLaunchAsset.h"
 #include "MControlledLaunchManager.h"
 #include "MDebug.h"
@@ -12,6 +14,7 @@
 #include "MMovementTypes.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
+#include "VisualLogger/VisualLoggerTypes.h"
 
 UMCharacterMovementComponent::UMCharacterMovementComponent()
 {
@@ -309,9 +312,9 @@ void UMCharacterMovementComponent::MaintainHorizontalGroundVelocity()
 	Super::MaintainHorizontalGroundVelocity();
 }
 
-void UMCharacterMovementComponent::ApplyRootMotionToVelocity(float deltaTime)
+void UMCharacterMovementComponent::ApplyRootMotionToVelocity(float DeltaTime)
 {
-	Super::ApplyRootMotionToVelocity(deltaTime);
+	Super::ApplyRootMotionToVelocity(DeltaTime);
 }
 
 void UMCharacterMovementComponent::RestorePreAdditiveRootMotionVelocity()
@@ -370,17 +373,6 @@ void UMCharacterMovementComponent::EnsureMovementModesInitialized()
 	}
 
 	bMovementModesInitialized = true;
-}
-
-UPrimitiveComponent* UMCharacterMovementComponent::GetMovementBaseCustom() const
-{
-	UMMovementMode_Base* ActiveCustomMovementMode = GetActiveCustomMovementModeInstance();
-	if (IsValid(ActiveCustomMovementMode) && ActiveCustomMovementMode->IsUsingCustomMovementBase())
-	{
-		return CustomMovementBase;
-	}
-
-	return GetMovementBase();
 }
 
 bool UMCharacterMovementComponent::IsCurrentMovementModeCustom() const
@@ -477,11 +469,6 @@ void UMCharacterMovementComponent::SetWalkingSpeedConfig(UMCharacterMovementWalk
 	SpeedConfigForSpeedTypeMap.Emplace(SpeedTypeAsset, Config);
 }
 
-void UMCharacterMovementComponent::SetCustomMovementBase(UPrimitiveComponent* InCustomMovementBase)
-{
-	CustomMovementBase = InCustomMovementBase;
-}
-
 void UMCharacterMovementComponent::DrawDebugDirection(const FVector& Direction, const FColor& Color, const FString& Text) const
 {
 	FVector EyesPoint;
@@ -554,18 +541,18 @@ void UMCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousM
 	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
 }
 
-void UMCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
+void UMCharacterMovementComponent::PhysCustom(float DeltaTime, int32 Iterations)
 {
 	if (IsCurrentMovementModeCustom())
 	{
 		UMMovementMode_Base* ActiveCustomMovementModeInstance = GetActiveCustomMovementModeInstance();
 		if (IsValid(ActiveCustomMovementModeInstance))
 		{
-			ActiveCustomMovementModeInstance->Phys(deltaTime, Iterations);
+			ActiveCustomMovementModeInstance->Phys(DeltaTime, Iterations);
 		}
 	}
 
-	Super::PhysCustom(deltaTime, Iterations);
+	Super::PhysCustom(DeltaTime, Iterations);
 }
 
 bool UMCharacterMovementComponent::CanCrouchInCurrentState() const

@@ -3,12 +3,15 @@
 
 #include "MovementModes/MMovementMode_WallRun.h"
 
+#include "DrawDebugHelpers.h"
 #include "MCharacterMovementComponent.h"
 #include "MMath.h"
 #include "MMovementTypes.h"
 #include "MString.h"
 #include "Components/CapsuleComponent.h"
+#include "Engine/Engine.h"
 #include "GameFramework/Character.h"
+#include "VisualLogger/VisualLogger.h"
 
 namespace WallRun_Private
 {
@@ -182,8 +185,9 @@ void UMMovementMode_WallRun::Phys_Implementation(float DeltaTime, int32 Iteratio
 	if (DeltaTime < UCharacterMovementComponent::MIN_TICK_TIME)
 		return;
 
-	// Set Custom Movement Base
-	MovementComponent->SetCustomMovementBase(RuntimeData.SurfaceInfo.PrimitiveComponent);
+	// Set Movement Base
+	FMovementBaseInterfaceData MovementBaseData(RuntimeData.SurfaceInfo.PrimitiveComponent);
+	MovementComponent->SetBase(&MovementBaseData);
 
 	// Jump off
 	if (CharacterOwner->bPressedJump)

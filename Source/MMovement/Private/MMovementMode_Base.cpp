@@ -5,7 +5,12 @@
 
 #include "MCharacterMovementComponent.h"
 #include "MMovementTypes.h"
+#include "Engine/Engine.h"
 #include "GameFramework/Character.h"
+
+#if ENABLE_VISUAL_LOG
+#include "VisualLogger/VisualLoggerTypes.h"
+#endif
 
 #if ENABLE_VISUAL_LOG
 void UMMovementMode_Base::GrabDebugSnapshot(struct FVisualLogEntry* Snapshot) const

@@ -230,7 +230,7 @@ namespace MMovementUtils
 			RemainingTime -= TimeTick;
 
 			const FVector OldLocation = MoveComp->UpdatedComponent->GetComponentLocation();
-			UPrimitiveComponent* OldBase = MoveComp->GetMovementBase();
+			FMovementBaseInterfaceData* OldBase = MoveComp->GetMovementBaseInterfaceData_Mutable();
 			const FFindFloorResult OldFloor = MoveComp->CurrentFloor;
 
 			MoveComp->RestorePreAdditiveRootMotionVelocity();
@@ -304,8 +304,7 @@ namespace MMovementUtils
 					continue;
 				}
 
-				bool bMustFall = (OldBase == nullptr) || (!OldBase->IsQueryCollisionEnabled() &&
-					MovementBaseUtility::IsDynamicBase(OldBase));
+				bool bMustFall = OldBase == nullptr || MovementBaseUtility::IsDynamicBase(OldBase);
 
 				if (bMustFall || !bCheckedFall)
 				{
@@ -345,8 +344,7 @@ namespace MMovementUtils
 
 			if (!MoveComp->CurrentFloor.IsWalkableFloor() && !MoveComp->CurrentFloor.HitResult.bStartPenetrating)
 			{
-				bool bMustFall = MoveComp->bJustTeleported || !OldBase || (!OldBase->IsQueryCollisionEnabled() &&
-					MovementBaseUtility::IsDynamicBase(OldBase));
+				bool bMustFall = MoveComp->bJustTeleported || OldBase == nullptr || MovementBaseUtility::IsDynamicBase(OldBase);
 
 				if ((bMustFall || !bCheckedFall) &&
 					MoveComp->CheckFall(OldFloor, MoveComp->CurrentFloor.HitResult, Delta, OldLocation, RemainingTime, TimeTick, Iterations,
